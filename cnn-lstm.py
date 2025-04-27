@@ -167,11 +167,11 @@ class HandGestureDataset(Dataset):  # คลาสสำหรับจัดก
             )
             
 
-class CNN(nn.Module):
+class CNN(nn.Module):  # คลาสสำหรับโมเดล CNN
     def __init__(self, dropout):
-        super(CNN, self).__init__()
+        super(CNN, self).__init__()  # เรียกใช้ constructor ของคลาสแม่
 
-        self.features = nn.Sequential(
+        self.features = nn.Sequential(  # สร้างโมดูลสำหรับฟีเจอร์ของ CNN
             # Input size: 256*192*3
             # Spatial extend of each one (kernelConv size), F = 5
             # Slide size (strideConv), S = 2
@@ -180,9 +180,9 @@ class CNN(nn.Module):
             ## High: ((192 - 5 + 2 * 2) / 2) + 1 =  96.5 #*# H2 = (( H1 - F + 2(P) ) / S ) + 1
             ## Depth: 16
             ## Output Conv Layer1:  128.5 * 96.5 * 16
-            nn.Conv2d(3, 16, kernel_size=5, stride=2, padding=2),
-            nn.ReLU(),
-            nn.BatchNorm2d(16),
+            nn.Conv2d(3, 16, kernel_size=5, stride=2, padding=2),  # Convolutional Layer 1
+            nn.ReLU(),  # Activation Function
+            nn.BatchNorm2d(16),  # Batch Normalization
             nn.Dropout2d(p=dropout),  # เพิ่ม Dropout2d หลัง BatchNorm
 
             # Max Pooling Layer 1
@@ -194,7 +194,7 @@ class CNN(nn.Module):
             ## High: ((96.5 - 2) / 2) + 1 = 48.25 #*# (( H2 - F ) / S ) + 1
             ## Depth: 16
             ### Output Max Pooling Layer 1: 64.25 * 48.25 * 16
-            nn.MaxPool2d(2, 2),
+            nn.MaxPool2d(2, 2),  # Max Pooling Layer 1
             #
             # # Conv Layer 2
             # # Input size:  64.25 * 48.25 * 16
@@ -307,28 +307,28 @@ input_size = 64 * 48 * 16 # for 1 layers CNN
 # input_size = 1 * 1 * 128 # for 4 layers CNN
 # input_size = 0 * 0 * 256 # for 5 layers CNN
 
-class CNN_LSTM(nn.Module):
+class CNN_LSTM(nn.Module):  # คลาสสำหรับโมเดล CNN-LSTM
     def __init__(self, hidden_units, hidden_layers, dropout):
-        super(CNN_LSTM, self).__init__()
+        super(CNN_LSTM, self).__init__()  # เรียกใช้ constructor ของคลาสแม่
         self.cnn = CNN(
             dropout=dropout
-        )
+        ) # สร้างโมเดล CNN
 
-        self.lstm = nn.LSTM(
-            input_size=input_size ,
+        self.lstm = nn.LSTM(  # สร้างโมเดล LSTM
+            input_size=input_size,
             hidden_size=hidden_units,
             num_layers=hidden_layers,
             dropout=dropout,
             batch_first=True
         )
-        self.dropout = nn.Dropout(p=dropout)
+        self.dropout = nn.Dropout(p=dropout)  # สร้าง Dropout Layer
         self.fc = nn.Linear(hidden_units, num_classes) ## numclasses คือจำนวน label ที่จะให้ทำนายตอนท้ายสุด
 
-    def forward(self, x):
+    def forward(self, x):  # ฟังก์ชันสำหรับการประมวลผลข้อมูลผ่านโมเดล
         # x shape: (batch, num_sequences, seconds, channels, height, width)
-        batch_size = x.size(0)
-        num_sequences = x.size(1)
-        sequence_length = x.size(2)
+        batch_size = x.size(0)  # ขนาดของแบตช์
+        num_sequences = x.size(1)  # จำนวน sequences
+        sequence_length = x.size(2)  # ความยาวของ sequence
 
         # Reshape for CNN
         x = x.view(batch_size * num_sequences * sequence_length, *x.size()[3:])
