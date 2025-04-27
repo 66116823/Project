@@ -1,171 +1,171 @@
-import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-import numpy as np
-from typing import List, Optional
-import gc
-import os
-import matplotlib.pyplot as plt
-from typing import List, Dict
+import torch  # นำเข้า PyTorch สำหรับการสร้างโมเดลและการคำนวณ
+import torch.nn as nn  # นำเข้าโมดูล neural network จาก PyTorch
+from torch.utils.data import Dataset, DataLoader  # นำเข้า Dataset และ DataLoader สำหรับการจัดการข้อมูล
+import numpy as np  # นำเข้า NumPy สำหรับการคำนวณเชิงตัวเลข
+from typing import List, Optional  # นำเข้า typing สำหรับการกำหนดประเภทข้อมูล
+import gc  # นำเข้า gc สำหรับการจัดการหน่วยความจำ
+import os  # นำเข้า os สำหรับการจัดการไฟล์และโฟลเดอร์
+import matplotlib.pyplot as plt  # นำเข้า Matplotlib สำหรับการสร้างกราฟ
+from typing import List, Dict  # นำเข้า typing สำหรับการกำหนดประเภทข้อมูล
 import time
-import time
-import psutil
+import time  # นำเข้า time สำหรับการวัดเวลา
+import psutil  # นำเข้า psutil สำหรับการตรวจสอบการใช้งานหน่วยความจำ
 import numpy as np
-from tqdm import tqdm
-from sklearn.metrics import accuracy_score,f1_score, precision_score, recall_score, classification_report, confusion_matrix
-import seaborn as sns
+from tqdm import tqdm  # นำเข้า tqdm สำหรับการแสดง progress bar
+from sklearn.metrics import accuracy_score,f1_score, precision_score, recall_score, classification_report, confusion_matrix # นำเข้า metrics จาก scikit-learn สำหรับการประเมินผล
+import seaborn as sns  # นำเข้า Seaborn สำหรับการสร้างกราฟที่สวยงาม
 
-from cnn_preprocessing import VideoPreprocessor
-preprocessor = VideoPreprocessor()
+from cnn_preprocessing import VideoPreprocessor  # นำเข้า VideoPreprocessor สำหรับการประมวลผลวิดีโอ
+preprocessor = VideoPreprocessor()  # สร้างอ็อบเจ็กต์ของ VideoPreprocessor
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-num_classes = 4
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # กำหนดอุปกรณ์สำหรับการประมวลผล (GPU หรือ CPU)
+num_classes = 4  # จำนวนคลาสที่ต้องการจำแนก
 
-# Create directory for saving picture
+# สร้างไดเรกทอรีสำหรับการบันทึกกราฟ
 plot = r"D:\cnn_lstm\Plot"
-os.makedirs(plot, exist_ok=True)
+os.makedirs(plot, exist_ok=True)  # สร้างโฟลเดอร์ถ้ายังไม่มี
 
-class TrainingVisualizer:
+class TrainingVisualizer:  # คลาสสำหรับการแสดงผลการฝึกอบรม
     def __init__(self, save_dir: str, dropout: float):
         """
-        Initialize the training visualizer.
+        กำหนดค่าเริ่มต้นสำหรับ TrainingVisualizer
 
         Args:
-            save_dir: Directory to save the generated plots
-            dropout: Dropout value used in training
+            save_dir: โฟลเดอร์สำหรับบันทึกกราฟ
+            dropout: ค่าดรอปเอาต์ที่ใช้ในการฝึกอบรม
         """
-        self.save_dir = save_dir
-        self.dropout = dropout
-        os.makedirs(save_dir, exist_ok=True)
+        self.save_dir = save_dir  # กำหนดที่เก็บไฟล์
+        self.dropout = dropout  # กำหนดค่าดรอปเอาต์
+        os.makedirs(save_dir, exist_ok=True)  # สร้างโฟลเดอร์ถ้ายังไม่มี
 
-        # Store metrics during training
+        # เก็บเมตริกในการฝึกอบรม
         self.metrics = {
-            'train_loss': [],
-            'val_loss': [],
-            'train_acc': [],
-            'val_acc': [],
-            'gpu_memory': [],
-            'batch_times': [],
-            'epoch_times': []
+            'train_loss': [],  # รายการสำหรับเก็บค่า loss ของการฝึกอบรม
+            'val_loss': [],  # รายการสำหรับเก็บค่า loss ของการตรวจสอบ
+            'train_acc': [],  # รายการสำหรับเก็บค่า accuracy ของการฝึกอบรม
+            'val_acc': [],  # รายการสำหรับเก็บค่า accuracy ของการตรวจสอบ
+            'gpu_memory': [],  # รายการสำหรับเก็บการใช้งานหน่วยความจำ GPU
+            'batch_times': [],  # รายการสำหรับเก็บเวลาที่ใช้ในการประมวลผลแต่ละแบตช์
+            'epoch_times': []  # รายการสำหรับเก็บเวลาที่ใช้ในการฝึกอบรมแต่ละยุค
         }
 
-        # Use default style instead of seaborn
+        # ใช้สไตล์เริ่มต้นแทน seaborn
         plt.style.use('default')
 
     def update_metrics(self, epoch_metrics: Dict):
-        """Update stored metrics with new values"""
-        for key, value in epoch_metrics.items():
-            if key in self.metrics:
-                self.metrics[key].append(value)
+        """อัปเดตเมตริกที่เก็บไว้ด้วยค่าที่ใหม่"""
+        for key, value in epoch_metrics.items():  # วนรอบค่าต่างๆ
+            if key in self.metrics:  # ถ้ากุญแจอยู่ในเมตริก
+                self.metrics[key].append(value)  # เพิ่มค่าในรายการ
 
     def plot_all_metrics(self):
-        """Generate individual plots for each metric"""
-        # Ensure we have data to plot
-        if not self.metrics['train_loss']:
-            print("No metrics to plot.")
+        """สร้างกราฟสำหรับเมตริกทั้งหมด"""
+        # ตรวจสอบว่ามีข้อมูลเพื่อสร้างกราฟหรือไม่
+        if not self.metrics['train_loss']:  # ถ้าไม่มีเมตริก
+            print("No metrics to plot.")  # แจ้งว่าไม่มีเมตริกให้แสดง
             return
 
-        # Plot training and validation loss
-        plt.figure(figsize=(10, 6))
-        epochs = range(1, len(self.metrics['train_loss']) + 1)
-        plt.plot(epochs, self.metrics['train_loss'], 'b-', label='Training Loss', linewidth=2)
-        plt.plot(epochs, self.metrics['val_loss'], 'r-', label='Validation Loss', linewidth=2)
-        plt.title('Training and Validation Loss')
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss')
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.savefig(os.path.join(self.save_dir, f'loss_dropout_{self.dropout}.png'))
-        plt.close()
+        # สร้างกราฟ loss ของการฝึกอบรมและการตรวจสอบ
+        plt.figure(figsize=(10, 6))  # กำหนดขนาดของกราฟ
+        epochs = range(1, len(self.metrics['train_loss']) + 1)  # สร้างช่วงยุค
+        plt.plot(epochs, self.metrics['train_loss'], 'b-', label='Training Loss', linewidth=2)  # กราฟ loss ของการฝึกอบรม
+        plt.plot(epochs, self.metrics['val_loss'], 'r-', label='Validation Loss', linewidth=2)  # กราฟ loss ของการตรวจสอบ
+        plt.title('Training and Validation Loss')  # ตั้งชื่อกราฟ
+        plt.xlabel('Epochs')  # ตั้งชื่อแกน x
+        plt.ylabel('Loss')  # ตั้งชื่อแกน y
+        plt.legend()  # แสดงตำนาน
+        plt.grid(True, alpha=0.3)  # แสดงกริด
+        plt.savefig(os.path.join(self.save_dir, f'loss_dropout_{self.dropout}.png'))  # บันทึกกราฟ
+        plt.close()  # ปิดกราฟ
 
-        # Plot training and validation accuracy
-        plt.figure(figsize=(10, 6))
-        plt.plot(epochs, self.metrics['train_acc'], 'b-', label='Training Accuracy', linewidth=2)
-        plt.plot(epochs, self.metrics['val_acc'], 'r-', label='Validation Accuracy', linewidth=2)
-        plt.title('Training and Validation Accuracy')
-        plt.xlabel('Epochs')
-        plt.ylabel('Accuracy (%)')
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.savefig(os.path.join(self.save_dir, f'accuracy_dropout_{self.dropout}.png'))
-        plt.close()
+        # สร้างกราฟ accuracy ของการฝึกอบรมและการตรวจสอบ
+        plt.figure(figsize=(10, 6))  # กำหนดขนาดของกราฟ
+        plt.plot(epochs, self.metrics['train_acc'], 'b-', label='Training Accuracy', linewidth=2)  # กราฟ accuracy ของการฝึกอบรม
+        plt.plot(epochs, self.metrics['val_acc'], 'r-', label='Validation Accuracy', linewidth=2)  # กราฟ accuracy ของการตรวจสอบ
+        plt.title('Training and Validation Accuracy')  # ตั้งชื่อกราฟ
+        plt.xlabel('Epochs')  # ตั้งชื่อแกน x
+        plt.ylabel('Accuracy (%)')  # ตั้งชื่อแกน y
+        plt.legend()  # แสดงตำนาน
+        plt.grid(True, alpha=0.3)  # แสดงกริด
+        plt.savefig(os.path.join(self.save_dir, f'accuracy_dropout_{self.dropout}.png'))  # บันทึกกราฟ
+        plt.close()  # ปิดกราฟ
 
-        # Plot GPU memory usage
-        plt.figure(figsize=(10, 6))
-        plt.plot(epochs, self.metrics['gpu_memory'], 'g-', linewidth=2)
-        plt.title('GPU Memory Usage Over Time')
-        plt.xlabel('Epochs')
-        plt.ylabel('Memory Usage (GB)')
-        plt.grid(True, alpha=0.3)
-        plt.savefig(os.path.join(self.save_dir, f'gpu_memory_dropout_{self.dropout}.png'))
-        plt.close()
+        # สร้างกราฟการใช้งานหน่วยความจำ GPU
+        plt.figure(figsize=(10, 6))  # กำหนดขนาดของกราฟ
+        plt.plot(epochs, self.metrics['gpu_memory'], 'g-', linewidth=2)  # กราฟการใช้งานหน่วยความจำ GPU
+        plt.title('GPU Memory Usage Over Time')  # ตั้งชื่อกราฟ
+        plt.xlabel('Epochs')  # ตั้งชื่อแกน x
+        plt.ylabel('Memory Usage (GB)')  # ตั้งชื่อแกน y
+        plt.grid(True, alpha=0.3)  # แสดงกริด
+        plt.savefig(os.path.join(self.save_dir, f'gpu_memory_dropout_{self.dropout}.png'))  # บันทึกกราฟ
+        plt.close()  # ปิดกราฟ
 
-        # Plot epoch times
-        plt.figure(figsize=(10, 6))
-        plt.plot(epochs, self.metrics['epoch_times'], 'b-', linewidth=2)
-        plt.title('Epoch Training Times')
-        plt.xlabel('Epochs')
-        plt.ylabel('Time (seconds)')
-        plt.grid(True, alpha=0.3)
-        plt.savefig(os.path.join(self.save_dir, f'epoch_times_dropout_{self.dropout}.png'))
-        plt.close()
+        # สร้างกราฟเวลาในการฝึกอบรมแต่ละยุค
+        plt.figure(figsize=(10, 6))  # กำหนดขนาดของกราฟ
+        plt.plot(epochs, self.metrics['epoch_times'], 'b-', linewidth=2)  # กราฟเวลาในการฝึกอบรม
+        plt.title('Epoch Training Times')  # ตั้งชื่อกราฟ
+        plt.xlabel('Epochs')  # ตั้งชื่อแกน x
+        plt.ylabel('Time (seconds)')  # ตั้งชื่อแกน y
+        plt.grid(True, alpha=0.3)  # แสดงกริด
+        plt.savefig(os.path.join(self.save_dir, f'epoch_times_dropout_{self.dropout}.png'))  # บันทึกกราฟ
+        plt.close()  # ปิดกราฟ
 
-        # Plot average batch times
-        plt.figure(figsize=(10, 6))
-        plt.plot(epochs, self.metrics['batch_times'], 'r-', linewidth=2)
-        plt.title('Average Batch Processing Times')
-        plt.xlabel('Epochs')
-        plt.ylabel('Time (seconds)')
-        plt.grid(True, alpha=0.3)
-        plt.savefig(os.path.join(self.save_dir, f'batch_times_dropout_{self.dropout}.png'))
-        plt.close()
+        # สร้างกราฟเวลาเฉลี่ยในการประมวลผลแต่ละแบตช์
+        plt.figure(figsize=(10, 6))  # กำหนดขนาดของกราฟ
+        plt.plot(epochs, self.metrics['batch_times'], 'r-', linewidth=2)  # กราฟเวลาเฉลี่ยในการประมวลผล
+        plt.title('Average Batch Processing Times')  # ตั้งชื่อกราฟ
+        plt.xlabel('Epochs')  # ตั้งชื่อแกน x
+        plt.ylabel('Time (seconds)')  # ตั้งชื่อแกน y
+        plt.grid(True, alpha=0.3)  # แสดงกริด
+        plt.savefig(os.path.join(self.save_dir, f'batch_times_dropout_{self.dropout}.png'))  # บันทึกกราฟ
+        plt.close()  # ปิดกราฟ
 
 
-class HandGestureDataset(Dataset):
+class HandGestureDataset(Dataset):  # คลาสสำหรับจัดการชุดข้อมูลการเคลื่อนไหวมือ
     def __init__(self,
                  sequences: np.ndarray,
                  labels: np.ndarray,
                  num_sequences: int = 1,
                  transform: Optional[object] = None):
-        self.sequences = sequences
-        self.labels = labels
-        self.num_sequences = num_sequences
-        self.transform = transform
+        self.sequences = sequences  # เก็บ sequences ของข้อมูล
+        self.labels = labels  # เก็บ labels ของข้อมูล
+        self.num_sequences = num_sequences  # จำนวน sequences ที่ต้องการ
+        self.transform = transform  # การแปลงข้อมูลถ้ามี
 
     def __len__(self) -> int:
-        return len(self.sequences)
+        return len(self.sequences)  # คืนค่าจำนวน sequences
 
     def __getitem__(self, idx: int):
         try:
-            # Get the sequence and convert to tensor
+            # ดึง sequence และแปลงเป็น tensor
             sequence = self.sequences[idx]
 
-            # Apply transform if specified
+            # ใช้ transform ถ้ามี
             if self.transform:
-                transformed_frames = []
-                for frame in sequence:
-                    transformed_frames.append(self.transform(frame))
-                sequence = np.stack(transformed_frames)
+                transformed_frames = []  # รายการสำหรับเก็บกรอบที่แปลงแล้ว
+                for frame in sequence:  # วนรอบกรอบใน sequence
+                    transformed_frames.append(self.transform(frame))  # แปลงกรอบ
+                sequence = np.stack(transformed_frames)  # สร้าง numpy array จากกรอบที่แปลงแล้ว
 
-            # Convert to tensor and normalize
-            sequence_tensor = torch.from_numpy(sequence.transpose(0, 3, 1, 2)).float() / 255.0
+            # แปลงเป็น tensor และ normalize
+            sequence_tensor = torch.from_numpy(sequence.transpose(0, 3, 1, 2)).float() / 255.0  # นำเข้าเป็น tensor
 
-            # Reshape for multiple sequences if needed
-            sequences_tensor = sequence_tensor.unsqueeze(0).repeat(self.num_sequences, 1, 1, 1, 1)
+            # เปลี่ยนรูปร่างสำหรับหลาย sequences ถ้าจำเป็น
+            sequences_tensor = sequence_tensor.unsqueeze(0).repeat(self.num_sequences, 1, 1, 1, 1)  # ทำซ้ำตามจำนวน sequences
 
-            # Get label
-            label_tensor = torch.tensor(self.labels[idx], dtype=torch.long)
+            # ดึง label
+            label_tensor = torch.tensor(self.labels[idx], dtype=torch.long)  # แปลง label เป็น tensor
 
-            return sequences_tensor, label_tensor
+            return sequences_tensor, label_tensor  # คืนค่า sequences และ label
 
         except Exception as e:
-            print(f"Error processing sequence {idx}: {e}")
+            print(f"Error processing sequence {idx}: {e}")  # แสดงข้อความเมื่อเกิดข้อผิดพลาด
             return (
-                torch.zeros((self.num_sequences, 15, 3, 256, 192)),
-                torch.tensor(self.labels[idx], dtype=torch.long)
+                torch.zeros((self.num_sequences, 15, 3, 256, 192)),  # คืนค่า tensor ศูนย์ถ้าเกิดข้อผิดพลาด
+                torch.tensor(self.labels[idx], dtype=torch.long)  # คืนค่า label ตามปกติ
             )
-
+            
 
 class CNN(nn.Module):
     def __init__(self, dropout):
