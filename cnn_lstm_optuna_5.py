@@ -1,85 +1,87 @@
-import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-import optuna
-from tqdm import tqdm
-import numpy as np
-from typing import List, Optional
-import gc
-import os
-from collections import defaultdict
-import matplotlib.pyplot as plt
+import torch  # นำเข้า PyTorch สำหรับการสร้างโมเดลและการคำนวณ
+import torch.nn as nn  # นำเข้าโมดูล neural network จาก PyTorch
+from torch.utils.data import Dataset, DataLoader  # นำเข้า Dataset และ DataLoader สำหรับการจัดการข้อมูล
+import optuna  # นำเข้า Optuna สำหรับการทำ hyperparameter optimization
+from tqdm import tqdm  # นำเข้า tqdm สำหรับการแสดง progress bar
+import numpy as np  # นำเข้า NumPy สำหรับการคำนวณเชิงตัวเลข
+from typing import List, Optional  # นำเข้า typing สำหรับการกำหนดประเภทข้อมูล
+import gc  # นำเข้า gc สำหรับการจัดการหน่วยความจำ
+import os  # นำเข้า os สำหรับการจัดการไฟล์และโฟลเดอร์
+from collections import defaultdict  # นำเข้า defaultdict สำหรับเก็บข้อมูล
+import matplotlib.pyplot as plt  # นำเข้า Matplotlib สำหรับการสร้างกราฟ
 
-from cnn_preprocessing import (
+# นำเข้าสำหรับการประมวลผลวิดีโอ
+from cnn_preprocessing import ( 
     load_video,
     split_dataset,
     folder_paths,
     load_videos_from_folders
 )
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-num_classes = 4
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # กำหนดอุปกรณ์สำหรับการประมวลผล (GPU หรือ CPU)
+num_classes = 4  # จำนวนคลาสที่ต้องการจำแนก
 
-# Create directory for saving picture
+# สร้างไดเรกทอรีสำหรับการบันทึกภาพ
 plot = r"D:\cnn_lstm\picture"
-os.makedirs(plot, exist_ok=True)
+os.makedirs(plot, exist_ok=True)  # สร้างโฟลเดอร์ถ้ายังไม่มี
 
-class HandGestureDataset(Dataset):
+class HandGestureDataset(Dataset):  # คลาสสำหรับจัดการชุดข้อมูลการเคลื่อนไหวมือ
     def __init__(self,
                  video_paths: List[str],
                  labels: List[int],
                  sequence_length: int = 15,
                  num_sequences: int = 1,
                  transform: Optional[object] = None):
-        self.video_paths = video_paths
-        self.labels = labels
-        self.sequence_length = sequence_length
-        self.num_sequences = num_sequences
-        self.transform = transform
+        self.video_paths = video_paths  # เก็บเส้นทางของวิดีโอ
+        self.labels = labels  # เก็บ labels ของข้อมูล
+        self.sequence_length = sequence_length  # ความยาวของ sequence
+        self.num_sequences = num_sequences  # จำนวน sequences ที่ต้องการ
+        self.transform = transform  # การแปลงข้อมูลถ้ามี
 
-    def __len__(self) -> int:
+    def __len__(self) -> int:  # คืนค่าจำนวนวิดีโอ
         return len(self.video_paths)
 
-    def __getitem__(self, idx: int):
+    def __getitem__(self, idx: int):  # ฟังก์ชันสำหรับดึงข้อมูลตามดัชนี
         try:
-            frames = load_video(self.video_paths[idx])
-            if frames.size == 0:
+            frames = load_video(self.video_paths[idx])  # โหลดวิดีโอ
+            if frames.size == 0:  # ถ้าวิดีโอว่าง
                 # Return a zero tensor with the correct shape
                 return (
-                    torch.zeros((self.num_sequences, self.sequence_length, 3, 256, 192)),
-                    torch.tensor(self.labels[idx], dtype=torch.long)
+                    torch.zeros((self.num_sequences, self.sequence_length, 3, 256, 192)),  # คืนค่า tensor ศูนย์
+                    torch.tensor(self.labels[idx], dtype=torch.long)  # คืนค่า label ตามปกติ
                 )
 
-            # Ensure we have enough frames
-            if len(frames) < self.sequence_length:
-                # Pad with duplicated frames if necessary
-                last_frame = frames[-1]
-                num_padding = self.sequence_length - len(frames)
-                padding_frames = np.tile(last_frame, (num_padding, 1, 1, 1))
-                frames = np.concatenate([frames, padding_frames])
-            elif len(frames) > self.sequence_length:
-                # Take evenly spaced frames
-                indices = np.linspace(0, len(frames) - 1, self.sequence_length, dtype=int)
-                frames = frames[indices]
+            # ตรวจสอบว่ามีเฟรมเพียงพอหรือไม่
+            if len(frames) < self.sequence_length:  # ถ้ามีเฟรมน้อยกว่าที่ต้องการ
+                # เพิ่มเฟรมซ้ำตามความจำเป็น
+                last_frame = frames[-1]  # เฟรมสุดท้าย
+                num_padding = self.sequence_length - len(frames)  # จำนวนเฟรมที่ต้องการเพิ่ม
+                padding_frames = np.tile(last_frame, (num_padding, 1, 1, 1))  # ทำซ้ำเฟรมสุดท้าย
+                frames = np.concatenate([frames, padding_frames])  # รวมเฟรมที่มีอยู่และเฟรมที่เพิ่ม
 
-            # Create sequences
-            sequences = []
-            for _ in range(self.num_sequences):
-                sequence_frames = []
-                for frame in frames:
-                    if self.transform:
-                        frame = self.transform(frame)
+            elif len(frames) > self.sequence_length:  # ถ้ามีเฟรมมากกว่าที่ต้องการ
+                # ใช้เฟรมที่ถูกเลือกแบบมีระยะห่าง
+                indices = np.linspace(0, len(frames) - 1, self.sequence_length, dtype=int)  # สร้างดัชนีที่มีระยะห่าง
+                frames = frames[indices]  # เลือกเฟรมตามดัชนี
+
+            # สร้าง sequences
+            sequences = []  # รายการสำหรับเก็บ sequences
+            for _ in range(self.num_sequences):  # วนรอบตามจำนวน sequences ที่ต้องการ
+                sequence_frames = []  # รายการสำหรับเก็บเฟรมใน sequence
+                for frame in frames:  # วนรอบผ่านแต่ละเฟรม
+                    if self.transform:  # ถ้ามีการแปลง
+                        frame = self.transform(frame)  # แปลงเฟรม
                     else:
-                        frame = torch.from_numpy(frame.transpose(2, 0, 1)).float() / 255.0
-                    sequence_frames.append(frame)
-                sequences.append(torch.stack(sequence_frames))
+                        frame = torch.from_numpy(frame.transpose(2, 0, 1)).float() / 255.0  # แปลงเป็น tensor
+                    sequence_frames.append(frame)  # เก็บเฟรมที่แปลงแล้ว
+                sequences.append(torch.stack(sequence_frames))  # สร้าง tensor จากเฟรมที่แปลงแล้ว
 
             # Stack all sequences
-            sequences_tensor = torch.stack(sequences)
-            label_tensor = torch.tensor(self.labels[idx], dtype=torch.long)
+            sequences_tensor = torch.stack(sequences)  # สร้าง tensor จาก sequences
+            label_tensor = torch.tensor(self.labels[idx], dtype=torch.long)  # แปลง label เป็น tensor
 
-            return sequences_tensor, label_tensor
-
+            return sequences_tensor, label_tensor  # คืนค่า sequences และ label
+            
         except Exception as e:
             print(f"Error processing video {self.video_paths[idx]}: {e}")
             return (
