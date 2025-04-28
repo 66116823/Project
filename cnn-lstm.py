@@ -351,187 +351,187 @@ class CNN_LSTM(nn.Module):  # คลาสสำหรับโมเดล CNN-
         return x
 
 
-class BenchmarkMetrics:
+class BenchmarkMetrics:  # คลาสสำหรับเก็บค่าการวัดประสิทธิภาพ
     def __init__(self):
-        self.batch_times = []
-        self.forward_times = []
-        self.backward_times = []
-        self.gpu_memory_usage = []
-        self.cpu_memory_usage = []
+        self.batch_times = []  # รายการสำหรับเก็บเวลาแบตช์
+        self.forward_times = []  # รายการสำหรับเก็บเวลา forward pass
+        self.backward_times = []  # รายการสำหรับเก็บเวลา backward pass
+        self.gpu_memory_usage = []  # รายการสำหรับเก็บการใช้งานหน่วยความจำ GPU
+        self.cpu_memory_usage = []  # รายการสำหรับเก็บการใช้งานหน่วยความจำ CPU
 
     def calculate_averages(self):
         return {
-            'avg_batch_time': np.mean(self.batch_times) if self.batch_times else 0,
-            'avg_forward_time': np.mean(self.forward_times) if self.forward_times else 0,
-            'avg_backward_time': np.mean(self.backward_times) if self.backward_times else 0,
-            'avg_gpu_memory': np.mean(self.gpu_memory_usage) if self.gpu_memory_usage else 0,
-            'avg_cpu_memory': np.mean(self.cpu_memory_usage) if self.cpu_memory_usage else 0
+            'avg_batch_time': np.mean(self.batch_times) if self.batch_times else 0,  # คำนวณค่าเฉลี่ยเวลาแบตช์
+            'avg_forward_time': np.mean(self.forward_times) if self.forward_times else 0,  # คำนวณค่าเฉลี่ยเวลา forward
+            'avg_backward_time': np.mean(self.backward_times) if self.backward_times else 0,  # คำนวณค่าเฉลี่ยเวลา backward
+            'avg_gpu_memory': np.mean(self.gpu_memory_usage) if self.gpu_memory_usage else 0,  # คำนวณค่าเฉลี่ยการใช้งาน GPU
+            'avg_cpu_memory': np.mean(self.cpu_memory_usage) if self.cpu_memory_usage else 0  # คำนวณค่าเฉลี่ยการใช้งาน CPU
         }
 
     def print_summary(self):
-        averages = self.calculate_averages()
-        print("\nBenchmark Summary:")
-        print("=" * 50)
-        print(f"Average Batch Processing Time: {averages['avg_batch_time']:.4f} seconds")
-        print(f"Average Forward Pass Time: {averages['avg_forward_time']:.4f} seconds")
-        print(f"Average Backward Pass Time: {averages['avg_backward_time']:.4f} seconds")
-        print(f"Average GPU Memory Usage: {averages['avg_gpu_memory']:.2f} GB")
-        print(f"Average CPU Memory Usage: {averages['avg_cpu_memory']:.2f} GB")
-        print("=" * 50)
+        averages = self.calculate_averages()  # คำนวณค่าเฉลี่ย
+        print("\nBenchmark Summary:")  # แสดงหัวข้อ
+        print("=" * 50)  # เส้นแบ่ง
+        print(f"Average Batch Processing Time: {averages['avg_batch_time']:.4f} seconds")  # แสดงค่าเฉลี่ยเวลาแบตช์
+        print(f"Average Forward Pass Time: {averages['avg_forward_time']:.4f} seconds")  # แสดงค่าเฉลี่ยเวลา forward
+        print(f"Average Backward Pass Time: {averages['avg_backward_time']:.4f} seconds")  # แสดงค่าเฉลี่ยเวลา backward
+        print(f"Average GPU Memory Usage: {averages['avg_gpu_memory']:.2f} GB")  # แสดงค่าเฉลี่ยการใช้งาน GPU
+        print(f"Average CPU Memory Usage: {averages['avg_cpu_memory']:.2f} GB")  # แสดงค่าเฉลี่ยการใช้งาน CPU
+        print("=" * 50)  # เส้นแบ่ง
 
 
-def train_model():
-    print(f"\n{'=' * 50}")
-    print(f"CNN-LSTM Training")
-    print(f"{'=' * 50}")
+def train_model():  # ฟังก์ชันสำหรับการฝึกโมเดล
+    print(f"\n{'=' * 50}")  # แสดงเส้นแบ่ง
+    print(f"CNN-LSTM Training")  # แสดงหัวข้อการฝึก
+    print(f"{'=' * 50}")  # แสดงเส้นแบ่ง
 
-    # Fixed hyperparameters
-    num_epochs = 200
-    dropout = 0.1
-    learning_rate = 0.001
-    batch_size = 37
-    hidden_units = 150
-    hidden_layers = 3
+    # กำหนดค่าพารามิเตอร์ที่แน่นอน
+    num_epochs = 200  # จำนวนยุคในการฝึก
+    dropout = 0.1  # ค่าดรอปเอาต์
+    learning_rate = 0.001  # อัตราการเรียนรู้
+    batch_size = 37  # ขนาดของแบตช์
+    hidden_units = 150  # จำนวนยูนิตใน LSTM
+    hidden_layers = 3  # จำนวนชั้นใน LSTM
 
-    # Initialize Visualizer and Benchmark Metrics
-    visualizer = TrainingVisualizer(save_dir=plot, dropout=dropout)
-    benchmark = BenchmarkMetrics()
+    # สร้าง Visualizer และ Benchmark Metrics
+    visualizer = TrainingVisualizer(save_dir=plot, dropout=dropout)  # สร้างอ็อบเจ็กต์สำหรับการแสดงผล
+    benchmark = BenchmarkMetrics()  # สร้างอ็อบเจ็กต์สำหรับค่าการวัดประสิทธิภาพ
 
-    # Print parameters
+    # แสดงพารามิเตอร์
     print("\nParameters:")
-    print(f"-- Batch Size: {batch_size}")
-    print(f"-- Hidden Units: {hidden_units}")
-    print(f"-- Hidden Layers: {hidden_layers}")
-    print(f"-- Number of Epochs: {num_epochs}")
-    print(f"-- Learning Rate: {learning_rate:.3f}")
-    print(f"-- Dropout: {dropout:.1f}")
+    print(f"-- Batch Size: {batch_size}")  # แสดงขนาดของแบตช์
+    print(f"-- Hidden Units: {hidden_units}")  # แสดงจำนวนยูนิตใน LSTM
+    print(f"-- Hidden Layers: {hidden_layers}")  # แสดงจำนวนชั้นใน LSTM
+    print(f"-- Number of Epochs: {num_epochs}")  # แสดงจำนวนยุคในการฝึก
+    print(f"-- Learning Rate: {learning_rate:.3f}")  # แสดงอัตราการเรียนรู้
+    print(f"-- Dropout: {dropout:.1f}")  # แสดงค่าดรอปเอาต์
 
-    print(f"{'=' * 50}")
+    print(f"{'=' * 50}")  # แสดงเส้นแบ่ง
 
-    # Get train, validation and test data
-    X_train, X_test, X_val, y_train, y_test, y_val = preprocessor.get_train_test_data()
+   # ดึงข้อมูลการฝึก, การตรวจสอบ และการทดสอบ
+    X_train, X_test, X_val, y_train, y_test, y_val = preprocessor.get_train_test_data()  # ดึงข้อมูลจาก VideoPreprocessor
 
-    # Combine training and validation sets
-    train_data = np.concatenate([X_train, X_val])
-    train_labels = np.concatenate([y_train, y_val])
+    # รวมชุดข้อมูลการฝึกและการตรวจสอบ
+    train_data = np.concatenate([X_train, X_val])  # รวมข้อมูลการฝึก
+    train_labels = np.concatenate([y_train, y_val])  # รวม labels
 
-    num_sequences = 1
-    train_dataset = HandGestureDataset(train_data, train_labels, num_sequences=num_sequences)
-    test_dataset = HandGestureDataset(X_test, y_test, num_sequences=num_sequences)
+    num_sequences = 1  # กำหนดจำนวน sequences
+    train_dataset = HandGestureDataset(train_data, train_labels, num_sequences=num_sequences)  # สร้าง HandGestureDataset สำหรับการฝึก
+    test_dataset = HandGestureDataset(X_test, y_test, num_sequences=num_sequences)  # สร้าง HandGestureDataset สำหรับการทดสอบ
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)  # สร้าง DataLoader สำหรับการฝึก
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)  # สร้าง DataLoader สำหรับการทดสอบ
 
-    model = CNN_LSTM(
+    model = CNN_LSTM(  # สร้างโมเดล CNN-LSTM
         hidden_units=hidden_units,
         hidden_layers=hidden_layers,
         dropout=dropout
-    ).to(device)
+    ).to(device)  # ส่งโมเดลไปยังอุปกรณ์
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)  # กำหนดออปติไมเซอร์ Adam
+    criterion = nn.CrossEntropyLoss()  # กำหนดฟังก์ชันสูญเสีย CrossEntropy
 
-    # Training loop
-    best_val_acc = 0.0
-    print("\nTraining Progress:")
-    print("-" * 50)
+    # วนลูปการฝึกอบรม
+    best_val_acc = 0.0  # ตัวแปรสำหรับเก็บ accuracy ที่ดีที่สุด
+    print("\nTraining Progress:")  # แสดงหัวข้อการฝึก
+    print("-" * 50)  # แสดงเส้นแบ่ง
 
-    for epoch in range(num_epochs):
-        model.train()
-        train_correct = 0
-        train_total = 0
-        train_losses = []
-        epoch_start_time = time.time()
-        batch_times_epoch = []
-        gpu_memory_epoch = []
+    for epoch in range(num_epochs):  # วนลูปตามจำนวนยุค
+        model.train()  # ตั้งค่าโมเดลเป็นโหมดการฝึก
+        train_correct = 0  # ตัวแปรสำหรับเก็บจำนวนการทำนายที่ถูกต้องในการฝึก
+        train_total = 0  # ตัวแปรสำหรับเก็บจำนวนข้อมูลทั้งหมดในการฝึก
+        train_losses = []  # รายการสำหรับเก็บค่า loss ของการฝึก
+        epoch_start_time = time.time()  # เริ่มต้นนับเวลาในการฝึกแต่ละยุค
+        batch_times_epoch = []  # รายการสำหรับเก็บเวลาในแต่ละแบตช์
+        gpu_memory_epoch = []  # รายการสำหรับเก็บการใช้งานหน่วยความจำ GPU ในแต่ละยุค
 
-        # Training phase with benchmarking
-        for batch_idx, (sequences, labels) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1} Training")):
-            batch_start_time = time.time()
+        # เฟสการฝึกพร้อมการวัดประสิทธิภาพ
+        for batch_idx, (sequences, labels) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1} Training")):  # วนลูปผ่าน DataLoader
+            batch_start_time = time.time()  # เริ่มนับเวลาในการประมวลผลแบตช์
 
-            sequences, labels = sequences.to(device), labels.to(device)
+            sequences, labels = sequences.to(device), labels.to(device)  # ส่งข้อมูลและ labels ไปยังอุปกรณ์
+            
+            # ล้าง gradients
+            optimizer.zero_grad()  # ล้างค่าของ gradients
 
-            # Clear gradients
-            optimizer.zero_grad()
+            # การวัดเวลา forward pass
+            forward_start = time.time()  # เริ่มนับเวลา
+            outputs = model(sequences)  # ประมวลผลข้อมูลผ่านโมเดล
+            forward_time = time.time() - forward_start  # คำนวณเวลา forward
+            benchmark.forward_times.append(forward_time)  # เก็บเวลา forward
 
-            # Forward pass timing
-            forward_start = time.time()
-            outputs = model(sequences)
-            forward_time = time.time() - forward_start
-            benchmark.forward_times.append(forward_time)
+            # คำนวณ loss และวัดเวลา backward pass
+            loss = criterion(outputs, labels)  # คำนวณ loss
+            backward_start = time.time()  # เริ่มนับเวลา
+            loss.backward()  # คำนวณ gradients
+            optimizer.step()  # ปรับปรุงน้ำหนัก
+            backward_time = time.time() - backward_start  # คำนวณเวลา backward
+            benchmark.backward_times.append(backward_time)  # เก็บเวลา backward
 
-            # Loss calculation and backward pass timing
-            loss = criterion(outputs, labels)
-            backward_start = time.time()
-            loss.backward()
-            optimizer.step()
-            backward_time = time.time() - backward_start
-            benchmark.backward_times.append(backward_time)
+            # เก็บเมตริก
+            train_losses.append(loss.item())  # เพิ่ม loss ในรายการ
+            _, predicted = torch.max(outputs.data, 1)  # ทำนายคลาสจากผลลัพธ์
+            train_total += labels.size(0)  # เพิ่มจำนวนข้อมูลทั้งหมด
+            train_correct += (predicted == labels).sum().item()  # คำนวณจำนวนการทำนายที่ถูกต้อง
 
-            # Store metrics
-            train_losses.append(loss.item())
-            _, predicted = torch.max(outputs.data, 1)
-            train_total += labels.size(0)
-            train_correct += (predicted == labels).sum().item()
+            # วัดเวลาในการประมวลผลแบตช์
+            batch_time = time.time() - batch_start_time  # คำนวณเวลาแบตช์
+            batch_times_epoch.append(batch_time)  # เก็บเวลาแบตช์
+            benchmark.batch_times.append(batch_time)  # เก็บเวลาแบตช์ใน Benchmark
 
-            # Batch timing
-            batch_time = time.time() - batch_start_time
-            batch_times_epoch.append(batch_time)
-            benchmark.batch_times.append(batch_time)
+            # ติดตามการใช้งานหน่วยความจำ
+            if torch.cuda.is_available():  # ถ้าใช้ GPU
+                gpu_memory = torch.cuda.memory_allocated() / 1e9  # แปลงเป็น GB
+                gpu_memory_epoch.append(gpu_memory)  # เก็บการใช้งาน GPU
+                benchmark.gpu_memory_usage.append(gpu_memory)  # เก็บการใช้งาน GPU ใน Benchmark
 
-            # Memory tracking
-            if torch.cuda.is_available():
-                gpu_memory = torch.cuda.memory_allocated() / 1e9  # Convert to GB
-                gpu_memory_epoch.append(gpu_memory)
-                benchmark.gpu_memory_usage.append(gpu_memory)
+            # ติดตามการใช้งานหน่วยความจำ CPU
+            process = psutil.Process()  # สร้างอ็อบเจ็กต์สำหรับติดตามการใช้งาน CPU
+            cpu_memory = process.memory_info().rss / 1e9  # แปลงเป็น GB
+            benchmark.cpu_memory_usage.append(cpu_memory)  # เก็บการใช้งาน CPU ใน Benchmark
 
-            # CPU Memory tracking
-            process = psutil.Process()
-            cpu_memory = process.memory_info().rss / 1e9  # Convert to GB
-            benchmark.cpu_memory_usage.append(cpu_memory)
+            # ล้างแคชเป็นระยะ
+            if batch_idx % 10 == 0:  # ทุกๆ 10 แบตช์
+                torch.cuda.empty_cache()  # ล้างแคชของ GPU
 
-            # Clear cache periodically
-            if batch_idx % 10 == 0:
-                torch.cuda.empty_cache()
+        train_acc = 100 * train_correct / train_total  # คำนวณ accuracy ของการฝึก
+        train_loss = np.mean(train_losses)  # คำนวณค่าเฉลี่ย loss ของการฝึก
+        epoch_time = time.time() - epoch_start_time  # คำนวณเวลาในการฝึกแต่ละยุค
 
-        train_acc = 100 * train_correct / train_total
-        train_loss = np.mean(train_losses)
-        epoch_time = time.time() - epoch_start_time
+        # เฟสการตรวจสอบพร้อมเมตริก
+        model.eval()  # ตั้งค่าโมเดลเป็นโหมดตรวจสอบ
+        val_correct = 0  # ตัวแปรสำหรับเก็บจำนวนการทำนายที่ถูกต้องในการตรวจสอบ
+        val_total = 0  # ตัวแปรสำหรับเก็บจำนวนข้อมูลทั้งหมดในการตรวจสอบ
+        val_losses = []  # รายการสำหรับเก็บค่า loss ของการตรวจสอบ
+        val_predictions = []  # รายการสำหรับเก็บการทำนายของการตรวจสอบ
+        val_true_labels = []  # รายการสำหรับเก็บ label จริงของการตรวจสอบ
 
-        # Validation phase with metrics
-        model.eval()
-        val_correct = 0
-        val_total = 0
-        val_losses = []
-        val_predictions = []
-        val_true_labels = []
+        with torch.no_grad():  # ปิดการคำนวณ gradients
+            for sequences, labels in test_loader:  # วนลูปผ่าน DataLoader
+                sequences, labels = sequences.to(device), labels.to(device)  # ส่งข้อมูลไปยังอุปกรณ์
 
-        with torch.no_grad():
-            for sequences, labels in test_loader:
-                sequences, labels = sequences.to(device), labels.to(device)
+                forward_start = time.time()  # เริ่มนับเวลา
+                outputs = model(sequences)  # ประมวลผลข้อมูลผ่านโมเดล
+                forward_time = time.time() - forward_start  # คำนวณเวลา forward
+                benchmark.forward_times.append(forward_time)  # เก็บเวลา forward
 
-                forward_start = time.time()
-                outputs = model(sequences)
-                forward_time = time.time() - forward_start
-                benchmark.forward_times.append(forward_time)
+                loss = criterion(outputs, labels)  # คำนวณ loss
+                val_losses.append(loss.item())  # เพิ่ม loss ในรายการ
 
-                loss = criterion(outputs, labels)
-                val_losses.append(loss.item())
+                _, predicted = torch.max(outputs.data, 1)  # ทำนายคลาสจากผลลัพธ์
+                val_predictions.extend(predicted.cpu().numpy())  # เก็บการทำนายในรายการ
+                val_true_labels.extend(labels.cpu().numpy())  # เก็บ label จริงในรายการ
+                val_total += labels.size(0)  # เพิ่มจำนวนข้อมูลทั้งหมด
+                val_correct += (predicted == labels).sum().item()  # คำนวณจำนวนการทำนายที่ถูกต้อง
 
-                _, predicted = torch.max(outputs.data, 1)
-                val_predictions.extend(predicted.cpu().numpy())
-                val_true_labels.extend(labels.cpu().numpy())
-                val_total += labels.size(0)
-                val_correct += (predicted == labels).sum().item()
+        # คำนวณเมตริก
+        val_acc = 100 * val_correct / val_total  # คำนวณ accuracy ของการตรวจสอบ
+        val_loss = np.mean(val_losses)  # คำนวณค่าเฉลี่ย loss ของการตรวจสอบ
+        val_f1 = f1_score(val_true_labels, val_predictions, average='weighted')  # คำนวณ F1 Score
+        val_precision = precision_score(val_true_labels, val_predictions, average='weighted')  # คำนวณ Precision
+        val_recall = recall_score(val_true_labels, val_predictions, average='weighted')  # คำนวณ Recall
 
-        # Calculate metrics
-        val_acc = 100 * val_correct / val_total
-        val_loss = np.mean(val_losses)
-        val_f1 = f1_score(val_true_labels, val_predictions, average='weighted')
-        val_precision = precision_score(val_true_labels, val_predictions, average='weighted')
-        val_recall = recall_score(val_true_labels, val_predictions, average='weighted')
-
-        # Update visualization metrics
+        # อัปเดตเมตริกเพื่อการแสดงผล
         epoch_metrics = {
             'train_loss': train_loss,
             'val_loss': val_loss,
@@ -541,136 +541,136 @@ def train_model():
             'batch_times': np.mean(batch_times_epoch),
             'epoch_times': epoch_time
         }
-        visualizer.update_metrics(epoch_metrics)
+        visualizer.update_metrics(epoch_metrics)  # อัปเดตเมตริกใน visualizer
 
-        # Save plots after each epoch
-        visualizer.plot_all_metrics()
+        # บันทึกกราฟหลังจากแต่ละยุค
+        visualizer.plot_all_metrics()  # สร้างกราฟทั้งหมด
 
-        # Track best validation accuracy
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
+        # ติดตาม accuracy ที่ดีที่สุดในการตรวจสอบ
+        if val_acc > best_val_acc:  # ถ้า accuracy ใหม่สูงกว่า
+            best_val_acc = val_acc  # อัปเดตค่า accuracy ที่ดีที่สุด
 
-        # Print epoch results with benchmarking info
-        print(f"\nEpoch {epoch + 1}")
-        print(f"Training Metrics:")
-        print(f"- Accuracy: {train_acc:.2f}%")
-        print(f"- Loss: {train_loss:.4f}")
-        print(f"Validation Metrics:")
-        print(f"- Accuracy: {val_acc:.2f}%")
-        print(f"- F1 Score: {val_f1:.4f}")
-        print(f"- Precision: {val_precision:.4f}")
-        print(f"- Recall: {val_recall:.4f}")
+       # แสดงผลลัพธ์ของยุคพร้อมข้อมูลการวัดประสิทธิภาพ
+        print(f"\nEpoch {epoch + 1}")  # แสดงหมายเลขยุค
+        print(f"Training Metrics:")  # แสดงหัวข้อเมตริกการฝึก
+        print(f"- Accuracy: {train_acc:.2f}%")  # แสดง accuracy ของการฝึก
+        print(f"- Loss: {train_loss:.4f}")  # แสดง loss ของการฝึก
+        print(f"Validation Metrics:")  # แสดงหัวข้อเมตริกการตรวจสอบ
+        print(f"- Accuracy: {val_acc:.2f}%")  # แสดง accuracy ของการตรวจสอบ
+        print(f"- F1 Score: {val_f1:.4f}")  # แสดง F1 Score
+        print(f"- Precision: {val_precision:.4f}")  # แสดง Precision
+        print(f"- Recall: {val_recall:.4f}")  # แสดง Recall
 
-        # Print current batch benchmarks
-        batch_averages = benchmark.calculate_averages()
-        print("\nCurrent Benchmarks:")
-        print(f"- Avg Batch Time: {batch_averages['avg_batch_time']:.4f} seconds")
-        print(f"- Avg Forward Time: {batch_averages['avg_forward_time']:.4f} seconds")
-        print(f"- Avg Backward Time: {batch_averages['avg_backward_time']:.4f} seconds")
-        print(f"- Current GPU Memory: {batch_averages['avg_gpu_memory']:.2f} GB")
-        print("-" * 30)
+        # แสดงข้อมูลการวัดประสิทธิภาพตามแบตช์ปัจจุบัน
+        batch_averages = benchmark.calculate_averages()  # คำนวณค่าเฉลี่ย
+        print("\nCurrent Benchmarks:")  # แสดงหัวข้อการวัดประสิทธิภาพ
+        print(f"- Avg Batch Time: {batch_averages['avg_batch_time']:.4f} seconds")  # แสดงค่าเฉลี่ยเวลาแบตช์
+        print(f"- Avg Forward Time: {batch_averages['avg_forward_time']:.4f} seconds")  # แสดงค่าเฉลี่ยเวลา forward
+        print(f"- Avg Backward Time: {batch_averages['avg_backward_time']:.4f} seconds")  # แสดงค่าเฉลี่ยเวลา backward
+        print(f"- Current GPU Memory: {batch_averages['avg_gpu_memory']:.2f} GB")  # แสดงการใช้งาน GPU ปัจจุบัน
+        print("-" * 30)  # แสดงเส้นแบ่ง
 
-    # Print final benchmark summary
-    benchmark.print_summary()
+    # แสดงสรุปการวัดประสิทธิภาพสุดท้าย
+    benchmark.print_summary()  # แสดงสรุปการวัดประสิทธิภาพ
 
-    # Final evaluation and summary
-    print(f"\nTraining Summary:")
-    print(f"{'=' * 30}")
-    print(f"Best Validation Accuracy: {best_val_acc:.2f}%")
-    print(f"Final Validation Metrics:")
-    print(f"- F1 Score: {val_f1:.4f}")
-    print(f"- Precision: {val_precision:.4f}")
-    print(f"- Recall: {val_recall:.4f}")
-    print(f"Parameters:")
-    print(f"-- Batch Size: {batch_size}")
-    print(f"-- Hidden Units: {hidden_units}")
-    print(f"-- Hidden Layers: {hidden_layers}")
-    print(f"-- Number of Epochs: {num_epochs}")
-    print(f"-- Learning Rate: {learning_rate:.6f}")
-    print(f"-- Dropout: {dropout:.6f}")
-    print(f"{'=' * 50}")
+    # สรุปผลการฝึกอบรม
+    print(f"\nTraining Summary:")  # แสดงหัวข้อสรุปการฝึก
+    print(f"{'=' * 30}")  # แสดงเส้นแบ่ง
+    print(f"Best Validation Accuracy: {best_val_acc:.2f}%")  # แสดง accuracy ที่ดีที่สุดในการตรวจสอบ
+    print(f"Final Validation Metrics:")  # แสดงหัวข้อเมตริกการตรวจสอบสุดท้าย
+    print(f"- F1 Score: {val_f1:.4f}")  # แสดง F1 Score สุดท้าย
+    print(f"- Precision: {val_precision:.4f}")  # แสดง Precision สุดท้าย
+    print(f"- Recall: {val_recall:.4f}")  # แสดง Recall สุดท้าย
+    print(f"Parameters:")  # แสดงหัวข้อพารามิเตอร์
+    print(f"-- Batch Size: {batch_size}")  # แสดงขนาดของแบตช์
+    print(f"-- Hidden Units: {hidden_units}")  # แสดงจำนวนยูนิตใน LSTM
+    print(f"-- Hidden Layers: {hidden_layers}")  # แสดงจำนวนชั้นใน LSTM
+    print(f"-- Number of Epochs: {num_epochs}")  # แสดงจำนวนยุคในการฝึก
+    print(f"-- Learning Rate: {learning_rate:.6f}")  # แสดงอัตราการเรียนรู้
+    print(f"-- Dropout: {dropout:.6f}")  # แสดงค่าดรอปเอาต์
+    print(f"{'=' * 50}")  # แสดงเส้นแบ่ง
 
-    return model, best_val_acc, test_loader
+    return model, best_val_acc, test_loader  # คืนค่าโมเดล, accuracy ที่ดีที่สุด และ DataLoader สำหรับการทดสอบ
 
 
-def evaluate_final_results(model, test_loader, device):
-    print(f"\n{'=' * 50}")
-    print(f"Final Model Evaluation")
-    print(f"{'=' * 50}")
+def evaluate_final_results(model, test_loader, device):  # ฟังก์ชันสำหรับประเมินผลลัพธ์สุดท้าย
+    print(f"\n{'=' * 50}")  # แสดงเส้นแบ่ง
+    print(f"Final Model Evaluation")  # แสดงหัวข้อการประเมินผลโมเดลสุดท้าย
+    print(f"{'=' * 50}")  # แสดงเส้นแบ่ง
 
-    model.eval()
-    test_pred = []
-    test_true = []
+    model.eval()  # ตั้งค่าโมเดลเป็นโหมดตรวจสอบ
+    test_pred = []  # รายการสำหรับเก็บการทำนายของชุดทดสอบ
+    test_true = []  # รายการสำหรับเก็บ label จริงของชุดทดสอบ
 
-    # Generate predictions
-    print("\nGenerating predictions for test set...")
-    with torch.no_grad():
-        for sequences, labels in tqdm(test_loader, desc="Evaluating"):
-            sequences = sequences.to(device)
-            outputs = model(sequences)
-            predictions = torch.argmax(outputs, dim=1)
-            test_pred.extend(predictions.cpu().numpy())
-            test_true.extend(labels.cpu().numpy())
+    # สร้างการทำนาย
+    print("\nGenerating predictions for test set...")  # แจ้งกำลังสร้างการทำนาย
+    with torch.no_grad():  # ปิดการคำนวณ gradients
+        for sequences, labels in tqdm(test_loader, desc="Evaluating"):  # วนลูปผ่าน DataLoader
+            sequences = sequences.to(device)  # ส่งข้อมูลไปยังอุปกรณ์
+            outputs = model(sequences)  # ประมวลผลข้อมูลผ่านโมเดล
+            predictions = torch.argmax(outputs, dim=1)  # ทำนายคลาสจากผลลัพธ์
+            test_pred.extend(predictions.cpu().numpy())  # เก็บการทำนายในรายการ
+            test_true.extend(labels.cpu().numpy())  # เก็บ label จริงในรายการ
 
-    # Calculate metrics
-    accuracy = accuracy_score(test_true, test_pred) * 100
-    f1 = f1_score(test_true, test_pred, average='weighted')
-    precision = precision_score(test_true, test_pred, average='weighted')
-    recall = recall_score(test_true, test_pred, average='weighted')
+    # คำนวณเมตริก
+    accuracy = accuracy_score(test_true, test_pred) * 100  # คำนวณ accuracy
+    f1 = f1_score(test_true, test_pred, average='weighted')  # คำนวณ F1 Score
+    precision = precision_score(test_true, test_pred, average='weighted')  # คำนวณ Precision
+    recall = recall_score(test_true, test_pred, average='weighted')  # คำนวณ Recall
 
-    # Print confusion matrix
-    print("\nConfusion Matrix:")
-    print("-" * 50)
-    class_names = ["No_Requests", "Person_1_Requests",
+    # แสดง confusion matrix
+    print("\nConfusion Matrix:")  # แสดงหัวข้อ confusion matrix
+    print("-" * 50)  # แสดงเส้นแบ่ง
+    class_names = ["No_Requests", "Person_1_Requests",  # ชื่อคลาส
                    "Person_2_Requests", "Person_1_and_Person_2_Requests"]
-    cm = confusion_matrix(test_true, test_pred)
+    cm = confusion_matrix(test_true, test_pred)  # คำนวณ confusion matrix
 
-    print("\nClass-wise Results:")
-    print("-" * 50)
-    print(classification_report(test_true, test_pred, target_names=class_names))
+    print("\nClass-wise Results:")  # แสดงหัวข้อผลลัพธ์ตามคลาส
+    print("-" * 50)  # แสดงเส้นแบ่ง
+    print(classification_report(test_true, test_pred, target_names=class_names))  # แสดงรายงานการจำแนกประเภท
 
-    # Print final metrics
-    print("\nFINAL TEST SET RESULTS")
-    print("=" * 50)
-    print(f"Test Accuracy: {accuracy:.2f}%")
-    print(f"Test F1 Score: {f1:.4f}")
-    print(f"Test Precision: {precision:.4f}")
-    print(f"Test Recall: {recall:.4f}")
-    print("=" * 50)
+    # แสดงเมตริกสุดท้าย
+    print("\nFINAL TEST SET RESULTS")  # แสดงหัวข้อผลลัพธ์ชุดทดสอบสุดท้าย
+    print("=" * 50)  # แสดงเส้นแบ่ง
+    print(f"Test Accuracy: {accuracy:.2f}%")  # แสดง accuracy ของชุดทดสอบ
+    print(f"Test F1 Score: {f1:.4f}")  # แสดง F1 Score ของชุดทดสอบ
+    print(f"Test Precision: {precision:.4f}")  # แสดง Precision ของชุดทดสอบ
+    print(f"Test Recall: {recall:.4f}")  # แสดง Recall ของชุดทดสอบ
+    print("=" * 50)  # แสดงเส้นแบ่ง
 
-    # Plot confusion matrix
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+    # วาด confusion matrix
+    plt.figure(figsize=(10, 8))  # กำหนดขนาดของกราฟ
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',  # สร้าง heatmap สำหรับ confusion matrix
                 xticklabels=class_names,
                 yticklabels=class_names)
-    plt.title('Confusion Matrix')
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label')
-    plt.xticks(rotation=45)
-    plt.yticks(rotation=45)
-    plt.tight_layout()
+    plt.title('Confusion Matrix')  # ตั้งชื่อกราฟ
+    plt.ylabel('True Label')  # ตั้งชื่อแกน y
+    plt.xlabel('Predicted Label')  # ตั้งชื่อแกน x
+    plt.xticks(rotation=45)  # หมุนชื่อแกน x
+    plt.yticks(rotation=45)  # หมุนชื่อแกน y
+    plt.tight_layout()  # ปรับขนาดกราฟให้เหมาะสม
 
-    # Save confusion matrix in the specified plot directory (D:\cnn_lstm\Plot)
-    confusion_matrix_path = os.path.join(plot, f'confusion_matrix.png')
-    plt.savefig(confusion_matrix_path)
-    plt.close()
-    print(f"\nConfusion matrix saved to: {confusion_matrix_path}")
-
-
-def main():
-    # GPU information
-    print(f"Using device: {device}")
-    print(f"CUDA available: {torch.cuda.is_available()}")
-    if torch.cuda.is_available():
-        print(f"CUDA device name: {torch.cuda.get_device_name(0)}")
-
-    # Train model
-    model, best_acc, test_loader = train_model()
-    print(f"Training completed with best accuracy: {best_acc:.2f}%")
-
-    # Evaluate final results
-    evaluate_final_results(model, test_loader, device)
+    # บันทึก confusion matrix ในโฟลเดอร์ที่กำหนด (D:\cnn_lstm\Plot)
+    confusion_matrix_path = os.path.join(plot, f'confusion_matrix.png')  # ตั้งชื่อไฟล์
+    plt.savefig(confusion_matrix_path)  # บันทึกกราฟ
+    plt.close()  # ปิดกราฟ
+    print(f"\nConfusion matrix saved to: {confusion_matrix_path}")  # แสดงข้อความยืนยันการบันทึก
 
 
-if __name__ == "__main__":
-    main()
+def main():  # ฟังก์ชันหลัก
+    # ข้อมูลเกี่ยวกับ GPU
+    print(f"Using device: {device}")  # แสดงอุปกรณ์ที่ใช้
+    print(f"CUDA available: {torch.cuda.is_available()}")  # แจ้งว่ามี CUDA หรือไม่
+    if torch.cuda.is_available():  # ถ้ามี CUDA
+        print(f"CUDA device name: {torch.cuda.get_device_name(0)}")  # แสดงชื่อของ GPU
+
+    # ฝึกโมเดล
+    model, best_acc, test_loader = train_model()  # เรียกใช้ฟังก์ชันฝึกโมเดล
+    print(f"Training completed with best accuracy: {best_acc:.2f}%")  # แสดงผลการฝึกที่ดีที่สุด
+
+    # ประเมินผลลัพธ์สุดท้าย
+    evaluate_final_results(model, test_loader, device)  # เรียกใช้ฟังก์ชันประเมินผล
+
+
+if __name__ == "__main__":  # ถ้ารันไฟล์นี้เป็นโปรแกรมหลัก
+    main()  # เรียกใช้ฟังก์ชันหลัก
