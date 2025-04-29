@@ -83,19 +83,19 @@ class HandGestureDataset(Dataset):  # คลาสสำหรับจัดก
             return sequences_tensor, label_tensor  # คืนค่า sequences และ label
             
         except Exception as e:
-            print(f"Error processing video {self.video_paths[idx]}: {e}")
+            print(f"Error processing video {self.video_paths[idx]}: {e}")  # แสดงข้อผิดพลาด
             return (
-                torch.zeros((self.num_sequences, self.sequence_length, 3, 256, 192)),
-                torch.tensor(self.labels[idx], dtype=torch.long)
+                torch.zeros((self.num_sequences, self.sequence_length, 3, 256, 192)),  # คืนค่า tensor ศูนย์
+                torch.tensor(self.labels[idx], dtype=torch.long)  # คืนค่า label ตามปกติ
             )
 
 
 
-class CNN(nn.Module):
-    def __init__(self, dropout):
-        super(CNN, self).__init__()
+class CNN(nn.Module):  # คลาสสำหรับโมเดล CNN
+    def __init__(self, dropout):  # กำหนดค่าดรอปเอาต์
+        super(CNN, self).__init__()  # เรียกใช้ constructor ของคลาสแม่
 
-
+        # สร้างโมดูลสำหรับฟีเจอร์ของ CNN
         self.features = nn.Sequential(
             # Input size: 256*192*3
             # Spatial extend of each one (kernelConv size), F = 5
@@ -105,9 +105,9 @@ class CNN(nn.Module):
             ## High: ((192 - 5 + 2 * 2) / 2) + 1 =  96.5 #*# H2 = (( H1 - F + 2(P) ) / S ) + 1
             ## Depth: 16
             ## Output Conv Layer1:  128.5 * 96.5 * 16
-            nn.Conv2d(3, 16, kernel_size=5, stride=2, padding=2),
-            nn.ReLU(),
-            nn.BatchNorm2d(16),
+            nn.Conv2d(3, 16, kernel_size=5, stride=2, padding=2),  # Convolutional Layer 1
+            nn.ReLU(),  # ฟังก์ชัน activation
+            nn.BatchNorm2d(16),  # Batch Normalization
             nn.Dropout2d(p=dropout),  # เพิ่ม Dropout2d หลัง BatchNorm
 
             # Max Pooling Layer 1
@@ -119,7 +119,7 @@ class CNN(nn.Module):
             ## High: ((96.5 - 2) / 2) + 1 = 48.25 #*# (( H2 - F ) / S ) + 1
             ## Depth: 16
             ### Output Max Pooling Layer 1: 64.25 * 48.25 * 16
-            nn.MaxPool2d(2, 2),
+            nn.MaxPool2d(2, 2),  # Max Pooling Layer 1
 
             # Conv Layer 2
             # Input size:  64.25 * 48.25 * 16
@@ -130,11 +130,11 @@ class CNN(nn.Module):
             ## High: ((48.25 - 5 + 2 * 2) / 2) + 1 =   24.625 #*# H2 = (( H1 - F + 2(P) ) / S ) + 1
             ## Depth: 32
             ## Output Conv Layer1: 32.625 * 24.625 * 32
-            nn.Conv2d(16, 32, kernel_size=5, stride=2, padding=2),
-            nn.ReLU(),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(16, 32, kernel_size=5, stride=2, padding=2),  # Convolutional Layer 2
+            nn.ReLU(),  # ฟังก์ชัน activation
+            nn.BatchNorm2d(32),  # Batch Normalization
             nn.Dropout2d(p=dropout),  # เพิ่ม Dropout2d หลัง BatchNorm
-
+            
             # Max Pooling Layer 2
             # Input size: 32.625 * 24.625 * 32
             ## Spatial extend of each one (kernelMaxPool size), F = 2
@@ -144,7 +144,7 @@ class CNN(nn.Module):
             ## High: ((24.625 - 2) / 2) + 1 = 12.312
             ## Depth: 32
             ### Output Max Pooling Layer 2: 16.312 * 12.312 * 32
-            nn.MaxPool2d(2, 2),
+            nn.MaxPool2d(2, 2),  # Max Pooling Layer 2
 
             # Conv Layer 3
             # Input size: 16.312 * 12.312 * 32
@@ -155,9 +155,9 @@ class CNN(nn.Module):
             ## High: ((12.312 - 5 + 2 * 2) / 2) + 1 =  6.656  #*# H2 = (( H1 - F + 2(P) ) / S ) + 1
             ## Depth: 64
             ## Output Conv Layer1: 8.656 * 6.656 * 64
-            nn.Conv2d(32, 64, kernel_size=5, stride=2, padding=2),
-            nn.ReLU(),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(32, 64, kernel_size=5, stride=2, padding=2),  # Convolutional Layer 3
+            nn.ReLU(),  # ฟังก์ชัน activation
+            nn.BatchNorm2d(64),  # Batch Normalization
             nn.Dropout2d(p=dropout),  # เพิ่ม Dropout2d หลัง BatchNorm
 
             # Max Pooling Layer 3
@@ -169,7 +169,7 @@ class CNN(nn.Module):
             ## High: ((6.656 - 2) / 2) + 1 = 3.328
             ## Depth: 64
             ### Output Max Pooling Layer 2: 4.328 * 3.328 * 64
-            nn.MaxPool2d(2, 2),
+            nn.MaxPool2d(2, 2),  # Max Pooling Layer 3
             #
             # # Conv Layer 4
             # # Input size: 4.328 * 3.328 * 64
@@ -223,8 +223,8 @@ class CNN(nn.Module):
 
         )
 
-    def forward(self, x):
-        return self.features(x)
+    def forward(self, x):  # ฟังก์ชันสำหรับการประมวลผลข้อมูลผ่านโมเดล
+        return self.features(x)  # คืนค่าผลลัพธ์จากฟีเจอร์
 
 # input_size = 64 * 48 * 16 # for 1 layers CNN
 # input_size = 16 * 12 * 32 # for 2 layers CNN
@@ -232,13 +232,15 @@ input_size = 4 * 3 * 64 # for 3 layers CNN
 # input_size = 1 * 1 * 128 # for 4 layers CNN
 # input_size = 0 * 0 * 256 # for 5 layers CNN
 
-class CNN_LSTM(nn.Module):
-    def __init__(self, hidden_units, hidden_layers, dropout):
-        super(CNN_LSTM, self).__init__()
+class CNN_LSTM(nn.Module):  # คลาสสำหรับโมเดล CNN-LSTM
+    def __init__(self, hidden_units, hidden_layers, dropout):  # กำหนดจำนวนยูนิตและชั้นใน LSTM
+        super(CNN_LSTM, self).__init__()  # เรียกใช้ constructor ของคลาสแม่
+        # สร้างโมเดล CNN
         self.cnn = CNN(
             dropout=dropout
         )
 
+        # สร้างโมเดล LSTM
         self.lstm = nn.LSTM(
             input_size=input_size ,
             hidden_size=hidden_units,
@@ -246,53 +248,52 @@ class CNN_LSTM(nn.Module):
             dropout=dropout,
             batch_first=True
         )
-        self.dropout = nn.Dropout(p=dropout)
+        self.dropout = nn.Dropout(p=dropout) # สร้าง Dropout Layer
         self.fc = nn.Linear(hidden_units, num_classes) ## numclasses คือจำนวน label ที่จะให้ทำนายตอนท้ายสุด
 
-    def forward(self, x):
+    def forward(self, x): # ฟังก์ชันสำหรับการประมวลผลข้อมูลผ่านโมเดล
         # x shape: (batch, num_sequences, seconds, channels, height, width)
-        batch_size = x.size(0)
-        num_sequences = x.size(1)
-        sequence_length = x.size(2)
+        batch_size = x.size(0)  # ขนาดของแบตช์
+        num_sequences = x.size(1)  # จำนวน sequences
+        sequence_length = x.size(2)  # ความยาวของ sequence
 
         # Reshape for CNN
-        x = x.view(batch_size * num_sequences * sequence_length, *x.size()[3:])
-        x = self.cnn(x)
+        x = x.view(batch_size * num_sequences * sequence_length, *x.size()[3:])  # ปรับรูปร่างเข้ากับ CNN
+        x = self.cnn(x)  # ประมวลผลด้วย CNN
 
         # Reshape for LSTM
-        x = x.view(batch_size * num_sequences, sequence_length, -1)
-        lstm_out, _ = self.lstm(x)
+        x = x.view(batch_size * num_sequences, sequence_length, -1)  # ปรับรูปร่างเข้ากับ LSTM
+        lstm_out, _ = self.lstm(x)  # ประมวลผลด้วย LSTM
 
         # Take final output
         # x = self.fc(lstm_out[:, -1, :])
         x = self.fc(self.dropout(lstm_out[:, -1, :]))  # เพิ่ม dropout ก่อน fully connected layer
 
         # Reshape back
-        x = x.view(batch_size, num_sequences, -1)
-
+        x = x.view(batch_size, num_sequences, -1) # คืนรูปร่างให้ถูกต้อง
+ 
         # Average predictions
-        x = x.mean(dim=1)
+        x = x.mean(dim=1) # คืนค่าเฉลี่ยของ predictions
 
-        return x
+        return x # คืนค่าผลลัพธ์
 
 
-def objective(trial):
-    # Print current trial number
+def objective(trial):  # ฟังก์ชันสำหรับจัดการการทดลองของ Optuna
     print(f"\n{'=' * 50}")
-    print(f"Trial #{trial.number}")
+    print(f"Trial #{trial.number}")  # แสดงหมายเลขการทดลอง
     print(f"{'=' * 50}")
 
     # Hyperparameter optimization (Optuna)
-    batch_size = trial.suggest_int('batch_size', 8, 256)
-    hidden_units = trial.suggest_int('hidden_units', 100, 200)
-    hidden_layers = trial.suggest_int('hidden_layers', 1, 5)
+    batch_size = trial.suggest_int('batch_size', 8, 256)  # แนะนำขนาดแบตช์
+    hidden_units = trial.suggest_int('hidden_units', 100, 200)  # แนะนำจำนวนยูนิตใน LSTM
+    hidden_layers = trial.suggest_int('hidden_layers', 1, 5)  # แนะนำจำนวนชั้นใน LSTM
 
     # manual
-    num_epochs = 500
-    dropout = 0.8
-    learning_rate = 0.001
+    num_epochs = 500  # จำนวนยุคในการฝึก
+    dropout = 0.8  # ค่าดรอปเอาต์
+    learning_rate = 0.001  # อัตราการเรียนรู้
 
-    # Print trial parameters
+    # แสดงพารามิเตอร์ของการทดลอง
     print("\nTrial Parameters:")
     print(f"-- Batch Size: {batch_size}")
     print(f"-- Hidden Units: {hidden_units}")
@@ -304,12 +305,13 @@ def objective(trial):
     print(f"{'=' * 50}")
 
 
-    video_paths, labels = load_videos_from_folders(folder_paths)
-    train_paths, test_paths, train_labels, test_labels = split_dataset(
+    # โหลดข้อมูลวิดีโอ
+    video_paths, labels = load_videos_from_folders(folder_paths)  # โหลดวิดีโอจากโฟลเดอร์
+    train_paths, test_paths, train_labels, test_labels = split_dataset(  # แบ่งชุดข้อมูล
         video_paths,
         labels,
-        test_ratio=0.2, # แบ่ง train 80 test 20
-        balance_method='oversample' # normalize ข้อมูลให้เท่ากันทุก class use 'oversample' or 'undersample'
+        test_ratio=0.2,  # แบ่ง train 80 test 20
+        balance_method='oversample'  # normalize ข้อมูลให้เท่ากันทุก class
     )
 
 #### ส่วนนี้เดี๋ยวเอาไว้ทำ Augmentation
@@ -319,194 +321,188 @@ def objective(trial):
     #     transforms.ToTensor(),
     # ])
 
-    num_sequences = 1 # เข้า LSTM ทีละ 1 set (15 frames)
-    train_dataset = HandGestureDataset(train_paths, train_labels, num_sequences=num_sequences)
-    test_dataset = HandGestureDataset(test_paths, test_labels, num_sequences=num_sequences)
+    num_sequences = 1  # เข้า LSTM ทีละ 1 set (15 frames)
+    train_dataset = HandGestureDataset(train_paths, train_labels, num_sequences=num_sequences)  # สร้าง HandGestureDataset สำหรับการฝึก
+    test_dataset = HandGestureDataset(test_paths, test_labels, num_sequences=num_sequences)  # สร้าง HandGestureDataset สำหรับการทดสอบ
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)  # สร้าง DataLoader สำหรับการฝึก
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)  # สร้าง DataLoader สำหรับการทดสอบ
 
-    model = CNN_LSTM(
+    model = CNN_LSTM(  # สร้างโมเดล CNN-LSTM
         hidden_units=hidden_units,
         hidden_layers=hidden_layers,
         dropout=dropout
-    ).to(device)
+    ).to(device)  # ส่งโมเดลไปยังอุปกรณ์
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)  # กำหนดออปติไมเซอร์ Adam
+    criterion = nn.CrossEntropyLoss()  # กำหนดฟังก์ชันสูญเสีย CrossEntropy
 
-
-    # Training loop
-    best_val_acc = 0.0
-    print("\nTraining Progress:")
-    print("-" * 50)
+    # วนลูปการฝึกอบรม
+    best_val_acc = 0.0  # ตัวแปรสำหรับเก็บ accuracy ที่ดีที่สุด
+    print("\nTraining Progress:")  # แสดงหัวข้อการฝึก
+    print("-" * 50)  # แสดงเส้นแบ่ง
 
     # Initialize loss tracking
-    epoch_train_losses = defaultdict(list)
-    epoch_val_losses = defaultdict(list)
+    epoch_train_losses = defaultdict(list)  # เก็บค่า loss ในการฝึก
+    epoch_val_losses = defaultdict(list)  # เก็บค่า loss ในการตรวจสอบ
 
-    for epoch in range(num_epochs):
+    for epoch in range(num_epochs):  # วนลูปตามจำนวนยุค
         # Training phase
-        model.train()
-        train_correct = 0
-        train_total = 0
-        train_losses = []
+        model.train()  # ตั้งค่าโมเดลเป็นโหมดการฝึก
+        train_correct = 0  # ตัวแปรสำหรับเก็บจำนวนการทำนายที่ถูกต้องในการฝึก
+        train_total = 0  # ตัวแปรสำหรับเก็บจำนวนข้อมูลทั้งหมดในการฝึก
+        train_losses = []  # รายการสำหรับเก็บค่า loss ของการฝึก
 
 
-        for sequences, labels in tqdm(train_loader, desc=f"Epoch {epoch + 1} Training"):
+        for sequences, labels in tqdm(train_loader, desc=f"Epoch {epoch + 1} Training"): # วนลูปผ่าน DataLoader
             # Move data to device
-            sequences, labels = sequences.to(device), labels.to(device)
+            sequences, labels = sequences.to(device), labels.to(device) # ส่งข้อมูลไปยังอุปกรณ์
 
+            optimizer.zero_grad()  # ล้าง gradients
+            outputs = model(sequences)  # ประมวลผลข้อมูลผ่านโมเดล
+            loss = criterion(outputs, labels)  # คำนวณ loss
+            loss.backward()  # คำนวณ gradients
+            optimizer.step()  # ปรับปรุงน้ำหนัก
 
-            optimizer.zero_grad()
-            outputs = model(sequences)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+            # เก็บ loss
+            train_losses.append(loss.item())  # เพิ่ม loss ในรายการ
 
-            # Store loss
-            train_losses.append(loss.item())
-
-            # Calculate accuracy
-            _, predicted = torch.max(outputs.data, 1)
-            train_total += labels.size(0)
-            train_correct += (predicted == labels).sum().item()
+            # คำนวณ accuracy
+            _, predicted = torch.max(outputs.data, 1)  # ทำนายคลาสจากผลลัพธ์
+            train_total += labels.size(0)  # เพิ่มจำนวนข้อมูลทั้งหมด
+            train_correct += (predicted == labels).sum().item()  # คำนวณจำนวนการทำนายที่ถูกต้อง
 
             # Clear memory after each batch
-            torch.cuda.empty_cache()
+            torch.cuda.empty_cache()  # ล้างแคชของ GPU
 
-        train_acc = 100 * train_correct / train_total
-        epoch_train_losses[epoch] = train_losses
-
+        train_acc = 100 * train_correct / train_total  # คำนวณ accuracy ของการฝึก
+        epoch_train_losses[epoch] = train_losses  # เก็บค่า loss ของการฝึก
 
         # Validation phase
-        model.eval()
-        val_correct = 0
-        val_total = 0
-        val_losses = []
+        model.eval()  # ตั้งค่าโมเดลเป็นโหมดตรวจสอบ
+        val_correct = 0  # ตัวแปรสำหรับเก็บจำนวนการทำนายที่ถูกต้องในการตรวจสอบ
+        val_total = 0  # ตัวแปรสำหรับเก็บจำนวนข้อมูลทั้งหมดในการตรวจสอบ
+        val_losses = []  # รายการสำหรับเก็บค่า loss ของการตรวจสอบ
 
 
-        with torch.no_grad():
-            for sequences, labels in test_loader:
-                sequences, labels = sequences.to(device), labels.to(device)
+        with torch.no_grad():  # ปิดการคำนวณ gradients
+            for sequences, labels in test_loader:  # วนลูปผ่าน DataLoader
+                sequences, labels = sequences.to(device), labels.to(device)  # ส่งข้อมูลไปยังอุปกรณ์
 
-                outputs = model(sequences)
-                loss = criterion(outputs, labels)
-                val_losses.append(loss.item())
+                outputs = model(sequences)  # ประมวลผลข้อมูลผ่านโมเดล
+                loss = criterion(outputs, labels)  # คำนวณ loss
+                val_losses.append(loss.item())  # เพิ่ม loss ในรายการ
 
-
-                _, predicted = torch.max(outputs.data, 1)
-                val_total += labels.size(0)
-                val_correct += (predicted == labels).sum().item()
+                _, predicted = torch.max(outputs.data, 1)  # ทำนายคลาสจากผลลัพธ์
+                val_total += labels.size(0)  # เพิ่มจำนวนข้อมูลทั้งหมด
+                val_correct += (predicted == labels).sum().item()  # คำนวณจำนวนการทำนายที่ถูกต้อง
 
                 # Clear memory after each batch
-                torch.cuda.empty_cache()
+                torch.cuda.empty_cache()  # ล้างแคชของ GPU
 
-        val_acc = 100 * val_correct / val_total
-        epoch_val_losses[epoch] = val_losses
-        best_val_acc = max(best_val_acc, val_acc)
-
+        val_acc = 100 * val_correct / val_total  # คำนวณ accuracy ของการตรวจสอบ
+        epoch_val_losses[epoch] = val_losses  # เก็บค่า loss ของการตรวจสอบ
+        best_val_acc = max(best_val_acc, val_acc)  # ติดตาม accuracy ที่ดีที่สุด
+        
         # print(f"Epoch {epoch+1}")
-        print(f"\nTraining Accuracy: {train_acc:.2f}%")
-        print(f"Validation Accuracy: {val_acc:.2f}%")
-        print(f"Best Validation Accuracy: {best_val_acc:.2f}%")
-        print("-" * 30)
+        print(f"\nTraining Accuracy: {train_acc:.2f}%")  # แสดง accuracy ของการฝึก
+        print(f"Validation Accuracy: {val_acc:.2f}%")  # แสดง accuracy ของการตรวจสอบ
+        print(f"Best Validation Accuracy: {best_val_acc:.2f}%")  # แสดง accuracy ที่ดีที่สุด
+        print("-" * 30)  # แสดงเส้นแบ่ง
 
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            print(f'GPU Memory allocated: {torch.cuda.memory_allocated() / 1e9:.2f} GB')
+        # การจัดการหน่วยความจำ
+        gc.collect()  # เก็บขยะ
+        if torch.cuda.is_available():  # ถ้าใช้ GPU
+            torch.cuda.empty_cache()  # ล้างแคชของ GPU
+            print(f'GPU Memory allocated: {torch.cuda.memory_allocated() / 1e9:.2f} GB')  # แสดงการใช้งานหน่วยความจำ GPU
 
 
     # Print trial summary
-    print(f"\nTrial #{trial.number} Summary:")
-    print(f"{'=' * 30}")
-    print(f"Best Validation Accuracy: {best_val_acc:.2f}%")
-    print(f"Parameters:")
-    print(f"-- Batch Size: {batch_size}")
-    print(f"-- Hidden Units: {hidden_units}")
-    print(f"-- Hidden Layers: {hidden_layers}")
-    print(f"-- Number of Epochs: {num_epochs}")
-    print(f"-- Learning Rate: {learning_rate:.6f}")
-    print(f"-- Dropout: {dropout:.6f}")
-    print(f"{'=' * 50}")
+    print(f"\nTrial #{trial.number} Summary:")  # แสดงหัวข้อสรุป
+    print(f"{'=' * 30}")  # แสดงเส้นแบ่ง
+    print(f"Best Validation Accuracy: {best_val_acc:.2f}%")  # แสดง accuracy ที่ดีที่สุด
+    print(f"Parameters:")  # แสดงหัวข้อพารามิเตอร์
+    print(f"-- Batch Size: {batch_size}")  # แสดงขนาดแบตช์
+    print(f"-- Hidden Units: {hidden_units}")  # แสดงจำนวนยูนิตใน LSTM
+    print(f"-- Hidden Layers: {hidden_layers}")  # แสดงจำนวนชั้นใน LSTM
+    print(f"-- Number of Epochs: {num_epochs}")  # แสดงจำนวนยุคในการฝึก
+    print(f"-- Learning Rate: {learning_rate:.6f}")  # แสดงอัตราการเรียนรู้
+    print(f"-- Dropout: {dropout:.6f}")  # แสดงค่าดรอปเอาต์
+    print(f"{'=' * 50}")  # แสดงเส้นแบ่ง
 
     # Convert losses to numpy arrays for plotting
-    train_losses_array = np.array([epoch_train_losses[i] for i in range(num_epochs)])
-    val_losses_array = np.array([epoch_val_losses[i] for i in range(num_epochs)])
+    train_losses_array = np.array([epoch_train_losses[i] for i in range(num_epochs)])  # แปลงค่า loss ของการฝึก
+    val_losses_array = np.array([epoch_val_losses[i] for i in range(num_epochs)])  # แปลงค่า loss ของการตรวจสอบ
 
     # Create and save the loss plot
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(10, 6))  # กำหนดขนาดกราฟ
 
-    plt.style.use('default')  # or try 'classic', 'bmh', 'ggplot'
+    plt.style.use('default')  # ใช้สไตล์กราฟแบบเริ่มต้น
 
-    epochs = range(num_epochs)
+    epochs = range(num_epochs)  # สร้างช่วงยุค
 
     # Plot mean training loss and range
-    plt.plot(epochs, np.mean(train_losses_array, axis=1), 'r-',
-             label='Mean Training Loss', linewidth=2)
-    train_std = np.std(train_losses_array, axis=1)
+    plt.plot(epochs, np.mean(train_losses_array, axis=1), 'r-', label='Mean Training Loss', linewidth=2)  # วาดกราฟ mean loss ของการฝึก
+    train_std = np.std(train_losses_array, axis=1)  # คำนวณค่าเบี่ยงเบนมาตรฐาน
     plt.fill_between(epochs,
                      np.mean(train_losses_array, axis=1) - train_std,
                      np.mean(train_losses_array, axis=1) + train_std,
-                     alpha=0.2, color='red', label='Training Loss Range')
+                     alpha=0.2, color='red', label='Training Loss Range')  # วาดพื้นที่ช่วง
 
     # Plot mean validation loss and range
-    plt.plot(epochs, np.mean(val_losses_array, axis=1), 'b-',
-             label='Mean Validation Loss', linewidth=2)
-    val_std = np.std(val_losses_array, axis=1)
+    plt.plot(epochs, np.mean(val_losses_array, axis=1), 'b-', label='Mean Validation Loss', linewidth=2)  # วาดกราฟ mean loss ของการตรวจสอบ
+    val_std = np.std(val_losses_array, axis=1)  # คำนวณค่าเบี่ยงเบนมาตรฐาน
     plt.fill_between(epochs,
                      np.mean(val_losses_array, axis=1) - val_std,
                      np.mean(val_losses_array, axis=1) + val_std,
-                     alpha=0.2, color='blue', label='Validation Loss Range')
+                     alpha=0.2, color='blue', label='Validation Loss Range')  # วาดพื้นที่ช่วง
 
     # Customize plot
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.title(f'Training and Validation Loss - Trial {trial.number}')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.ylim(bottom=0)
+    plt.xlabel('Epochs')  # ตั้งชื่อแกน x
+    plt.ylabel('Loss')  # ตั้งชื่อแกน y
+    plt.title(f'Training and Validation Loss - Trial {trial.number}')  # ตั้งชื่อกราฟ
+    plt.legend()  # แสดงตำนาน
+    plt.grid(True, alpha=0.3)  # แสดงกริด
+    plt.ylim(bottom=0)  # กำหนดให้ค่า y เริ่มที่ 0
 
     # Save plot
-    save_path = os.path.join(plot, f'trial_{trial.number}_loss.png')
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    plt.close()
+    save_path = os.path.join(plot, f'trial_{trial.number}_loss.png')  # ตั้งชื่อไฟล์
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')  # บันทึกกราฟ
+    plt.close()  # ปิดกราฟ
 
     # Store results
-    trial.set_user_attr('best_val_accuracy', best_val_acc)
+    trial.set_user_attr('best_val_accuracy', best_val_acc)  # เก็บ accuracy ที่ดีที่สุดใน trial
 
-    return best_val_acc
+    return best_val_acc  # คืนค่า accuracy ที่ดีที่สุด
 
-def main():
-    # GPU information
-    print(f"Using device: {device}")
-    print(f"CUDA available: {torch.cuda.is_available()}")
-    if torch.cuda.is_available():
-        print(f"CUDA device name: {torch.cuda.get_device_name(0)}")
+def main():  # ฟังก์ชันหลัก
+    # ข้อมูลเกี่ยวกับ GPU
+    print(f"Using device: {device}")  # แสดงอุปกรณ์ที่ใช้
+    print(f"CUDA available: {torch.cuda.is_available()}")  # แจ้งว่ามี CUDA หรือไม่
+    if torch.cuda.is_available():  # ถ้ามี CUDA
+        print(f"CUDA device name: {torch.cuda.get_device_name(0)}")  # แสดงชื่อของ GPU
 
-    # Optuna setup
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective, n_trials=10, catch=(Exception,))
+    # การตั้งค่าของ Optuna
+    study = optuna.create_study(direction='maximize')  # สร้างการศึกษาใหม่เพื่อหาค่ามากที่สุด
+    study.optimize(objective, n_trials=10, catch=(Exception,))  # เรียกใช้ฟังก์ชัน objective สำหรับการทดลอง
 
-    print("\nBest Trial Results:")
-    print("=" * 50)
-    trial = study.best_trial
-    # Find which trial number was the best
-    best_trial_number = None
-    for trial_idx, t in enumerate(study.trials):
-        if t.number == trial.number:
-            best_trial_number = trial_idx + 1
+    print("\nBest Trial Results:")  # แสดงรายละเอียดของการทดลองที่ดีที่สุด
+    print("=" * 50)  # แสดงเส้นแบ่ง
+    trial = study.best_trial  # ดึงการทดลองที่ดีที่สุด
+    # หาหมายเลขการทดลองที่ดีที่สุด
+    best_trial_number = None  # ตัวแปรสำหรับเก็บหมายเลขการทดลองที่ดีที่สุด
+    for trial_idx, t in enumerate(study.trials):  # วนรอบทุกการทดลอง
+        if t.number == trial.number:  # ถ้าหมายเลขการทดลองตรงกัน
+            best_trial_number = trial_idx + 1  # เก็บหมายเลขการทดลองที่ดีที่สุด
             break
 
-    print(f"Best Trial Number: {best_trial_number} (Trial #{trial.number})")
-    print(f"Best Accuracy: {trial.value:.2f}%")
-    print("\nBest Parameters:")
-    for key, value in trial.params.items():
-        print("    {}: {}".format(key, value))
+    print(f"Best Trial Number: {best_trial_number} (Trial #{trial.number})")  # แสดงหมายเลขการทดลองที่ดีที่สุด
+    print(f"Best Accuracy: {trial.value:.2f}%")  # แสดงค่าที่ดีที่สุด
+    print("\nBest Parameters:")  # แสดงพารามิเตอร์ของการทดลองที่ดีที่สุด
+    for key, value in trial.params.items():  # วนรอบพารามิเตอร์
+        print("    {}: {}".format(key, value))  # แสดงชื่อและค่าของพารามิเตอร์
 
 
 
-
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":  # ถ้ารันไฟล์นี้เป็นโปรแกรมหลัก
+    main()  # เรียกใช้ฟังก์ชันหลัก
