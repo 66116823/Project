@@ -1,43 +1,43 @@
-import random
-import cv2
-import numpy as np
-from pathlib import Path
-import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-import torchvision.transforms as transforms
-from sklearn.metrics import classification_report, confusion_matrix
+import random  # นำเข้าโมดูล random สำหรับการสุ่ม
+import cv2 # นำเข้า OpenCV สำหรับการประมวลผลภาพ
+import numpy as np # นำเข้า NumPy สำหรับการคำนวณเชิงตัวเลข
+from pathlib import Path # นำเข้า Path สำหรับการจัดการไฟล์
+import torch # นำเข้า PyTorch สำหรับการสร้างโมเดลและการคำนวณ
+import torch.nn as nn # นำเข้าโมดูล neural network จาก PyTorch
+from torch.utils.data import Dataset, DataLoader # นำเข้า Dataset และ DataLoader สำหรับการจัดการข้อมูล
+import torchvision.transforms as transforms # นำเข้า transforms สำหรับการแปลงภาพ
+from sklearn.metrics import classification_report, confusion_matrix # นำเข้าเครื่องมือสำหรับวัดประสิทธิภาพ
 
-from cnn_preprocessing import load_video
-from cnn_preprocessing import select_frames
-from cnn_preprocessing import split_dataset
-from cnn_preprocessing import folder_paths,load_videos_from_folders
-from PIL import Image
-from tqdm import tqdm
+from cnn_preprocessing import load_video # นำเข้าฟังก์ชันสำหรับโหลดวิดีโอ
+from cnn_preprocessing import select_frames # นำเข้าฟังก์ชันสำหรับเลือกเฟรม
+from cnn_preprocessing import split_dataset # นำเข้าฟังก์ชันสำหรับแบ่งชุดข้อมูล
+from cnn_preprocessing import folder_paths,load_videos_from_folders # นำเข้าที่อยู่ของโฟลเดอร์และโหลดวิดีโอ
+from PIL import Image # นำเข้า PIL สำหรับการจัดการภาพ
+from tqdm import tqdm # นำเข้า tqdm สำหรับแสดงแถบความก้าวหน้า
 
 
-# Parameters
+# Parameters # กำหนดจำนวนคลาส
 num_classes = 4
 
-
+# สร้างคลาส HandGestureDataset สำหรับจัดการชุดข้อมูล
 class HandGestureDataset(Dataset):
     def __init__(self, video_paths, labels, sequence_length=15, transform=None):
-        self.video_paths = video_paths
-        self.labels = labels
-        self.sequence_length = sequence_length
-        self.transform = transform
+        self.video_paths = video_paths # ที่อยู่ของวิดีโอ
+        self.labels = labels # ป้ายกำกับของวิดีโอ
+        self.sequence_length = sequence_length # ความยาวของลำดับเฟรม
+        self.transform = transform # การแปลงที่ใช้กับเฟรม
 
-    def __len__(self):
+    def __len__(self): # เมธอดสำหรับคืนค่าจำนวนตัวอย่างในชุดข้อมูล
         return len(self.video_paths)
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx): # เมธอดสำหรับเข้าถึงตัวอย่างในชุดข้อมูล
         try:
-            video_path = self.video_paths[idx]
+            video_path = self.video_paths[idx] # ดึงที่อยู่ของวิดีโอ
 
-            # Check if the video file exists
+            # ตรวจสอบว่ามีไฟล์วิดีโออยู่หรือไม่
             if not Path(video_path).is_file():
                 print(f"Warning: Video file not found - {video_path}")
-                # Return a default or skip this sample
+                # ส่งคืนค่าเริ่มต้นหรือข้ามตัวอย่างนี้
                 return self.__getitem__((idx + 1) % len(self.video_paths))
             
             # โหลดวิดีโอและเลือกเฟรม บน GPU
@@ -219,184 +219,195 @@ class CNN_LSTM(nn.Module):
         # output = เป็น hidden state สุดท้ายที่ lstm เรียนรู้จากการดูทั้ง 15 เฟรม
         x = self.fc(lstm_out[:, -1, :]) 
 
-        return x
+        return x # คืนค่าผลลัพธ์
 
 
 def train_model(model, train_loader, val_loader, test_loader, num_epochs=10, patience=5):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model.to(device)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # ตรวจสอบว่าใช้ GPU หรือไม่
+    model = model.to(device) # ส่งโมเดลไปยังอุปกรณ์ที่เลือก
 
-    # Mixed precision training
-    scaler = torch.amp.GradScaler()
+    # การฝึกอบรมแบบ mixed precision
+    scaler = torch.amp.GradScaler() # สร้าง scaler สำหรับการจัดการ gradient
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-5)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
+    criterion = nn.CrossEntropyLoss() # กำหนด loss function
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-5) # สร้าง optimizer
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2) # สร้าง scheduler สำหรับปรับ learning rate
     
-    best_acc = 0.0
-    no_improve = 0
+    best_acc = 0.0 # ตัวแปรสำหรับเก็บความแม่นยำที่ดีที่สุด
+    no_improve = 0 # ตัวนับสำหรับการไม่มีการปรับปรุง
 
-    for epoch in range(num_epochs):
+    for epoch in range(num_epochs): # วนลูปตามจำนวน epoch
         # Training
-        model.train()
-        train_loss = 0.0
-        train_correct = 0
-        train_total = 0
+        model.train() # เปลี่ยนโมเดลเป็นโหมดฝึกอบรม
+        train_loss = 0.0 # ตัวแปรสำหรับเก็บค่า loss ของการฝึก
+        train_correct = 0 # ตัวแปรสำหรับเก็บจำนวนการทำนายที่ถูกต้องในการฝึก
+        train_total = 0 # ตัวแปรสำหรับเก็บจำนวนตัวอย่างทั้งหมดในการฝึก
 
-        for i, (sequences, labels) in enumerate(train_loader):
-            sequences, labels = sequences.to(device), labels.to(device)
+        for i, (sequences, labels) in enumerate(train_loader):  # วนลูปผ่าน data loader
+            sequences, labels = sequences.to(device), labels.to(device)   # ส่งข้อมูลไปยังอุปกรณ์ที่เลือก
 
-            # Runs the forward pass with autocasting
-            with torch.amp.autocast(device_type='cuda', dtype=torch.float16):  # Specify the device type
-                outputs = model(sequences)
-                loss = criterion(outputs, labels)
+             # ทำการประมวลผลด้วย autocasting
+            with torch.amp.autocast(device_type='cuda', dtype=torch.float16):  # ใช้ mixed precision
+                outputs = model(sequences) # ส่งข้อมูลผ่านโมเดล
+                loss = criterion(outputs, labels)  # คำนวณค่า loss
 
-            # Scales loss and calls backward() to create scaled gradients
-            scaler.scale(loss).backward()
+            # Scales loss and calls backward() to create scaled gradients  # สร้าง gradient
+            scaler.scale(loss).backward() # สร้าง gradient ด้วยการ scale loss
             
-            # Unscales gradients and calls optimizer.step()
-            scaler.step(optimizer)
+            # Unscales gradients and calls optimizer.step()  # อัปเดตโมเดล
+            scaler.step(optimizer)  # อัปเดตน้ำหนักของโมเดล
 
-            # Updates the scale for next iteration
+            # Updates the scale for next iteration # อัปเดต scale สำหรับการวนรอบถัดไป
             scaler.update()
 
-            optimizer.zero_grad()
+            optimizer.zero_grad()  # รีเซ็ต gradient
 
             # outputs = model(sequences)
             # loss = criterion(outputs, labels)
             # loss.backward()
             # optimizer.step()
 
-            train_loss += loss.item()
-            _, predicted = torch.max(outputs.data, 1)
-            train_total += labels.size(0)
-            train_correct += (predicted == labels).sum().item()
+            train_loss += loss.item() # เพิ่มค่า loss เข้าไปในตัวแปรรวม
+            _, predicted = torch.max(outputs.data, 1) # คำนวณการทำนาย
+            train_total += labels.size(0) # เพิ่มจำนวนตัวอย่างทั้งหมด
+            train_correct += (predicted == labels).sum().item() # เพิ่มจำนวนการทำนายที่ถูกต้อง
             
-            if (i+1) % 10 == 0:
+            if (i+1) % 10 == 0: # แสดงค่าทุก ๆ 10 step
                 print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f}')
         
         # Validation
         model.eval()
-        val_correct = 0
-        val_total = 0
-        val_loss = 0.0
-        
-        with torch.no_grad():
-            for sequences, labels in val_loader:
-                sequences, labels = sequences.to(device), labels.to(device)
-                outputs = model(sequences)
-                val_loss += criterion(outputs, labels).item()
-                _, predicted = torch.max(outputs.data, 1)
-                val_total += labels.size(0)
-                val_correct += (predicted == labels).sum().item()
+        val_correct = 0 # ตัวแปรสำหรับเก็บจำนวนการทำนายที่ถูกต้องในการทดสอบ
+        val_total = 0 # ตัวแปรสำหรับเก็บจำนวนตัวอย่างทั้งหมดในการทดสอบ
+        val_loss = 0.0 # ตัวแปรสำหรับเก็บค่า loss ของการทดสอบ
+         
+        with torch.no_grad(): # ปิดการคำนวณ gradient
+            for sequences, labels in val_loader: # วนลูปผ่าน validation data loader
+                sequences, labels = sequences.to(device), labels.to(device) # ส่งข้อมูลไปยังอุปกรณ์ที่เลือก
+                outputs = model(sequences) # ส่งข้อมูลผ่านโมเดล
+                val_loss += criterion(outputs, labels).item() # คำนวณค่า loss สำหรับ validation
+                _, predicted = torch.max(outputs.data, 1) # คำนวณการทำนาย
+                val_total += labels.size(0) # เพิ่มจำนวนตัวอย่างทั้งหมด
+                val_correct += (predicted == labels).sum().item() # เพิ่มจำนวนการทำนายที่ถูกต้อง
 
         # Testing
         test_correct = 0
         test_total = 0
         test_loss = 0.0
         
-        with torch.no_grad():
-            for sequences, labels in test_loader:
-                sequences, labels = sequences.to(device), labels.to(device)
-                outputs = model(sequences)
-                test_loss += criterion(outputs, labels).item()
-                _, predicted = torch.max(outputs.data, 1)
-                test_total += labels.size(0)
-                test_correct += (predicted == labels).sum().item()
+        with torch.no_grad(): # ปิดการคำนวณ gradient
+            for sequences, labels in test_loader: # วนลูปผ่าน test data loader
+                sequences, labels = sequences.to(device), labels.to(device) # ส่งข้อมูลไปยังอุปกรณ์ที่เลือก
+                outputs = model(sequences) # ส่งข้อมูลผ่านโมเดล
+                test_loss += criterion(outputs, labels).item() # คำนวณค่า loss สำหรับ test
+                _, predicted = torch.max(outputs.data, 1) # คำนวณการทำนาย
+                test_total += labels.size(0) # เพิ่มจำนวนตัวอย่างทั้งหมด
+                test_correct += (predicted == labels).sum().item() # เพิ่มจำนวนการทำนายที่ถูกต้อง
 
-        # Calculate accuracies
-        train_acc = 100 * train_correct / train_total
-        val_acc = 100 * val_correct / val_total
-        test_acc = 100 * test_correct / test_total
+        # Calculate accuracies # คำนวณความแม่นยำ
+        train_acc = 100 * train_correct / train_total # คำนวณความแม่นยำในการฝึก
+        val_acc = 100 * val_correct / val_total # คำนวณความแม่นยำในการ validation
+        test_acc = 100 * test_correct / test_total # คำนวณความแม่นยำในการทดสอบ
         
-        # Print epoch results
+        # Print epoch results # แสดงผลลัพธ์ของ epoch
         print(f'Epoch [{epoch+1}/{num_epochs}]')
         print(f'Train Loss: {train_loss/len(train_loader):.4f}, Train Acc: {train_acc:.2f}%')
         print(f'Val Loss: {val_loss/len(val_loader):.4f}, Val Acc: {val_acc:.2f}%')
         print(f'Test Loss: {test_loss/len(test_loader):.4f}, Test Acc: {test_acc:.2f}%')
 
-        # Update best accuracy based on validation performance
+        # Update best accuracy based on validation performance # อัปเดตความแม่นยำที่ดีที่สุด
         if val_acc > best_acc:
-            best_acc = val_acc
-            no_improve = 0
+            best_acc = val_acc # อัปเดตความแม่นยำที่ดีที่สุด
+            no_improve = 0 # รีเซ็ตตัวนับ
         else:
-            no_improve += 1
+            no_improve += 1 # เพิ่มตัวนับถ้าไม่มีการปรับปรุง
 
-        # Learning rate scheduling based on validation loss
+        # Learning rate scheduling based on validation loss # ปรับ learning rate ตาม validation loss
         scheduler.step(val_loss)
 
-        # Early stopping
+        # Early stopping # ตรวจสอบการหยุดการฝึก
         if no_improve >= patience:
             print(f'Early stopping triggered after epoch {epoch+1}')
             break
 
-    return model, best_acc
-
+    return model, best_acc # คืนค่าโมเดลและความแม่นยำที่ดีที่สุด
+# ฟังก์ชันสำหรับทดลองขนาด batch
 def experiment_batch_sizes(batch_sizes=[8, 16, 32, 64], num_runs=3):
     # Use mixed precision training
-    scaler = torch.amp.GradScaler()
+    scaler = torch.amp.GradScaler() # สร้าง scaler สำหรับการจัดการ gradient
 
-    # Transformations
+    # Transformations # กำหนดการแปลงภาพ
     transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        transforms.ToTensor(), # แปลงภาพเป็น tensor
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), # ปรับค่าความเข้มและการกระจาย
         # Optional: data augmentation for better generalization
-        transforms.RandomHorizontalFlip(p=0.5)
+        transforms.RandomHorizontalFlip(p=0.5) # การเพิ่มข้อมูลโดยการพลิกภาพ
     ])
 
-    # Use more efficient data loading
-    def seed_worker(worker_id):
-        worker_seed = torch.initial_seed() % 2**32
-        np.random.seed(worker_seed)
-        random.seed(worker_seed)
+    # Use more efficient data loading # ฟังก์ชันสำหรับกำหนด seed สำหรับ worker
+    def seed_worker(worker_id): 
+        worker_seed = torch.initial_seed() % 2**32 # กำหนด seed
+        np.random.seed(worker_seed) # กำหนด seed สำหรับ NumPy
+        random.seed(worker_seed) # กำหนด seed สำหรับ random
 
-    g = torch.Generator()
-    g.manual_seed(0)
+    g = torch.Generator() # สร้าง generator สำหรับการสุ่ม
+    g.manual_seed(0) # กำหนด seed
     
-    # Load video paths and labels
+    # Load video paths and labels  # โหลดที่อยู่วิดีโอและป้ายกำกับ
     video_paths, labels = load_videos_from_folders(folder_paths)
 
     # Split the data into train, validation, and test sets
+    # แบ่งข้อมูลเป็นชุดฝึก, validation และทดสอบ
     train_paths, val_paths, test_paths, train_labels, val_labels, test_labels = split_dataset(
         video_paths, labels, val_ratio=0.1, test_ratio=0.2
     )
     # Dictionary to store results
+    # สร้าง dictionary สำหรับเก็บผลลัพธ์
     batch_size_results = {}
 
     # Device configuration
+    # Device configuration # ตรวจสอบอุปกรณ์
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     # Experiment with different batch sizes
+    # ทดลองขนาด batch ที่แตกต่างกัน
     for batch_size in batch_sizes:
         print(f"\n--- Experimenting with Batch Size: {batch_size} ---")
         
         # Store multiple run results for this batch size
+        # เก็บผลลัพธ์การทดลองหลายรอบสำหรับขนาด batch นี้
         run_results = []
 
         for run in tqdm(range(num_runs), desc=f"Batch Size {batch_size} Runs"):
             print(f"\nRun {run + 1} of {num_runs}")
             
             # Create datasets
+            # สร้าง datasets
             train_dataset = HandGestureDataset(train_paths, train_labels, transform=transform)
             val_dataset = HandGestureDataset(val_paths, val_labels, transform=transform)
             test_dataset = HandGestureDataset(test_paths, test_labels, transform=transform)
 
             # Create data loaders
+            # สร้าง data loaders
             train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
             val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
             test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
             # Initialize model
+            # สร้างโมเดล
             model = CNN_LSTM().to(device)
 
             # Train model with validation set
+            # ฝึกโมเดลโดยใช้ชุด validation
             model, best_acc = train_model(model, train_loader, val_loader, test_loader, num_epochs=10)
             
             # Store results for this run
+            # เก็บผลลัพธ์สำหรับการทดลองนี้
             run_results.append(best_acc)
 
         # Calculate average accuracy for this batch size
+        # คำนวณความแม่นยำเฉลี่ยสำหรับขนาด batch นี้
         avg_acc = sum(run_results) / num_runs
         batch_size_results[batch_size] = {
             'best_accuracies': run_results,
@@ -414,11 +425,11 @@ def experiment_batch_sizes(batch_sizes=[8, 16, 32, 64], num_runs=3):
     best_batch_size = max(batch_size_results, key=lambda k: batch_size_results[k]['average_accuracy'])
     print(f"\nBest Batch Size: {best_batch_size} (Average Accuracy: {batch_size_results[best_batch_size]['average_accuracy']:.2f}%)")
 
-    return batch_size_results
+    return batch_size_results #  # คืนค่าผลลลัพธ์ของขนาด batch
 
 def main():
     # Run batch size experiment
-    experiment_batch_sizes()
+    experiment_batch_sizes() # ทดสอบการทดลองขนาด batch 
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": # ถ้ารันไฟล์นี้เป็นโปรแกรมหลัก
+    main() #เรียกใช้ฟังก์ชันหลัก
