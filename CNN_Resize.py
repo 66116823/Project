@@ -1,5 +1,5 @@
-import os
-import cv2
+import os  # นำเข้าโมดูล os สำหรับการจัดการไฟล์และไดเรกทอรี
+import cv2  # นำเข้า OpenCV สำหรับการจัดการวิดีโอ
 
 def reduce_frame_rate_and_resize(video_path, target_fps, target_width, target_height):
     # อ่านไฟล์วิดีโอ
